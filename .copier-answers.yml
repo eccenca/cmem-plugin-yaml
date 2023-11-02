@@ -1,0 +1,10 @@
+# Changes here will be overwritten by Copier
+_commit: v5.3.3
+_src_path: gh:eccenca/cmem-plugin-template
+author_mail: natanael.arndt@eccenca.com
+author_name: Natanael Arndt
+github_page: ''
+project_description: Convert YAML input to JSON files
+project_slug: yaml2json
+pypi: false
+
