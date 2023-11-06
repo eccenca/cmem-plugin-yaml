@@ -9,8 +9,7 @@ from cmem.cmempy.workspace.projects.resources.resource import (
     get_resource_response,
 )
 
-from cmem_plugin_yaml2json.transform import Lifetime
-from cmem_plugin_yaml2json.workflow import DollyPlugin
+from cmem_plugin_yaml2json.workflow import Yaml2JsonPlugin
 from tests.utils import TestExecutionContext, needs_cmem
 
 PROJECT_NAME = "yaml2json_test_project"
@@ -47,25 +46,10 @@ def test_workflow_execution():
     entities = 100
     values = 10
 
-    plugin = DollyPlugin(number_of_entities=entities, number_of_values=values)
+    plugin = Yaml2JsonPlugin(number_of_entities=entities, number_of_values=values)
     result = plugin.execute(inputs=(), context=TestExecutionContext())
     for item in result.entities:
         assert len(item.values) == len(result.schema.paths)
-
-
-def test_transform_execution_with_optional_input():
-    """Test Lifetime with optional input"""
-    result = Lifetime(start_date="2000-05-22").transform(inputs=[])
-    for item in result:
-        assert item == "23"
-
-
-def test_transform_execution_with_inputs():
-    """Test Lifetime with sequence of inputs."""
-    result = Lifetime(start_date="").transform(
-        inputs=[["2000-05-22", "2021-12-12", "1904-02-29"]]
-    )
-    assert result >= ["22", "0", "118"]
 
 
 @needs_cmem
