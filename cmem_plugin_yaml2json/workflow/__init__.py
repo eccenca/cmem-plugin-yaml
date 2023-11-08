@@ -15,6 +15,7 @@ from cmem_plugin_base.dataintegration.context import (
 from cmem_plugin_base.dataintegration.entity import Entities
 from cmem_plugin_base.dataintegration.description import Plugin, PluginParameter
 from cmem_plugin_base.dataintegration.plugins import WorkflowPlugin
+from cmem_plugin_base.dataintegration.types import StringParameterType
 from cmem_plugin_base.dataintegration.utils import (
     setup_cmempy_user_access,
     split_task_id,
@@ -41,7 +42,7 @@ The values are generated in X rows a Y values. Both parameter can be specified:
             description="From which file do you wan to load the data?"
             " The dropdown lists usable files from the current"
             " project only.",
-            param_type=DatasetParameterType(dataset_type="json"),
+            param_type=StringParameterType(),
             default_value="",
         ),
         PluginParameter(
@@ -69,6 +70,7 @@ class Yaml2JsonPlugin(WorkflowPlugin):
         self.log.info("convert")
 
         self.log.info("Happy to serve yaml2json random values.")
+        self.log.info(f"open file {self.source_file}")
 
         yaml = ruamel.yaml.YAML(typ='safe')
         with open(self.source_file, encoding="utf8") as source_file_handler:
