@@ -18,10 +18,9 @@ keywords = [
 [tool.poetry.dependencies]
 # if you need to change python version here, change it also in .python-version
 python = "^3.11"
-ruamel-yaml = "^0.18.4"
 
 [tool.poetry.dependencies.cmem-plugin-base]
-version = "^4.1.0"
+version = "^4.3.0"
 # allow-prereleases = true
 
 [tool.poetry.group.dev.dependencies]
