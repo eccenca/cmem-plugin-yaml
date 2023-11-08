@@ -1,11 +1,13 @@
 """Load YAML to JSON dataset workflow plugin module"""
+import json
 from pathlib import Path
 from tempfile import mkdtemp
 from typing import Sequence
 
+import yaml
 from cmem_plugin_base.dataintegration.utils import setup_cmempy_user_access
 from cmem_plugin_base.dataintegration.context import (
-    ExecutionContext
+    ExecutionContext, ExecutionReport
 )
 from cmem_plugin_base.dataintegration.entity import Entities
 from cmem_plugin_base.dataintegration.description import Plugin, PluginParameter
@@ -24,9 +26,16 @@ from cmem.cmempy.workspace.projects.resources.resource import (
 def yaml2json(yaml_file: Path, logger=None) -> Path:
     """Converts a YAML file to a JSON file."""
     json_file = Path(f"{mkdtemp()}/{yaml_file.name}.json")
-    with open(json_file, 'w', encoding="utf-8") as writer:
-        writer.write('{"ttt": ":-)"}')
-        logger.info(f"chunk written to {json_file}")
+    with open(yaml_file, "r", encoding="utf-8") as yaml_reader:
+        yaml_content = yaml.safe_load(yaml_reader)
+    if not isinstance(yaml_content, (dict, list)):
+        raise ValueError(
+            "YAML content could not be transformed to a dict or list."
+        )
+    with open(json_file, 'w', encoding="utf-8") as json_writer:
+        json.dump(yaml_content, json_writer)
+    if logger:
+        logger.info(f"JSON written to {json_file}")
     return json_file
 
 
@@ -71,15 +80,29 @@ class Yaml2JsonPlugin(WorkflowPlugin):
         # Input and output ports
         self.input_ports = FixedNumberOfInputs([])
         self.output_port = None
+        self.context = None
+
+    def _raise_error(self, message: str):
+        """sends a report and raises an error"""
+        if self.context:
+            self.context.report.update(
+                ExecutionReport(
+                    entity_count=0,
+                    operation_desc="YAML file transformed",
+                    error="message"
+                )
+            )
+        raise ValueError(message)
 
     def execute(
         self, inputs: Sequence[Entities], context: ExecutionContext
     ) -> None:
+        self.context = context
         self.log.info("start execute")
         setup_cmempy_user_access(context.user)
         project = context.task.project_id()
         if not resource_exist(project, self.source_file):
-            raise ValueError(
+            self._raise_error(
                 f"Source file '{self.source_file}' does not exist in the project."
             )
         self.log.info(
@@ -106,4 +129,10 @@ class Yaml2JsonPlugin(WorkflowPlugin):
             )
         self.log.info(
             f"JSON uploaded to dataset '{self.target_dataset}'."
+        )
+        context.report.update(
+            ExecutionReport(
+                entity_count=1,
+                operation_desc="YAML file transformed",
+            )
         )
