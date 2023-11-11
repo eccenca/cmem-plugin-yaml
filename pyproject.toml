@@ -2,8 +2,8 @@
 name = "cmem-plugin-yaml2json"
 version = "0.0.0"
 license = "Apache-2.0"
-description = "Convert YAML input to JSON files"
-authors = ["Natanael Arndt <natanael.arndt@eccenca.com>"]
+description = "Load and parse YAML documents."
+authors = ["eccenca GmbH <cmempy-developer@eccenca.com>"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Plugins",
@@ -22,7 +22,7 @@ pyyaml = "^6.0.1"
 
 [tool.poetry.dependencies.cmem-plugin-base]
 version = "^4.3.0"
-# allow-prereleases = true
+allow-prereleases = false
 
 [tool.poetry.group.dev.dependencies]
 bandit = "^1.7.5"
@@ -34,6 +34,8 @@ flake8-formatter-junit-xml = "^0.0.6"
 pillow = "^9.5.0"
 genbadge = "^1.1.0"
 mypy = "^1.2.0"
+# Avoid safety issue 62044 for pip less than 23.3
+pip = ">=23.3"
 # https://github.com/rasjani/pylint-junit/issues/1
 pylint = "^2"
 pylint-junit = "^0.3.2"
@@ -43,7 +45,6 @@ pytest-memray = { version = "^1.4.0",  markers = "platform_system != 'Windows'" 
 safety = "^1.10.3"
 typed-ast = "^1.5.4"
 wheel = "^0.38.4"
-pip = ">=23.3"
 types-pyyaml = "^6.0.12.12"
 
 [build-system]

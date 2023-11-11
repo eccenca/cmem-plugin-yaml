@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from cmem_plugin_yaml2json.workflow.yaml2json import yaml2json
+from cmem_plugin_yaml2json.parse import yaml2json
 from tests import FIXTURE_DIR
 
 

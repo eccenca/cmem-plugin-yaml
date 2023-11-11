@@ -13,7 +13,7 @@ from cmem_plugin_base.dataintegration.entity import (
     Entities,
     Entity,
 )
-from cmem_plugin_base.dataintegration.description import Plugin, PluginParameter
+from cmem_plugin_base.dataintegration.description import Plugin, PluginParameter, Icon
 from cmem_plugin_base.dataintegration.plugins import WorkflowPlugin
 from cmem_plugin_base.dataintegration.parameter.choice import ChoiceParameterType
 from cmem_plugin_base.dataintegration.parameter.code import YamlCode
@@ -66,9 +66,10 @@ def yaml2json(yaml_file: Path, logger=None) -> Path:
 
 
 @Plugin(
-    label="Load YAML into a JSON dataset",
-    description="Transforms a YAML file or text to JSON "
-    "and uploads it to a JSON Dataset.",
+    label="Parse YAML",
+    plugin_id="cmem_plugin_yaml-parse",
+    description="Parses files, source code or input values as YAML documents.",
+    icon=Icon(file_name="logo.svg", package=__package__),
     documentation="""This workflow task is basically a yaml2json command.""",
     parameters=[
         PluginParameter(
@@ -106,8 +107,8 @@ def yaml2json(yaml_file: Path, logger=None) -> Path:
         ),
     ],
 )
-class Yaml2JsonPlugin(WorkflowPlugin):
-    """YAML to JSON Plugin"""
+class ParseYaml(WorkflowPlugin):
+    """Parses files, source code or input values as YAML documents."""
 
     # pylint: disable=too-many-instance-attributes
 

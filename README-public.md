@@ -1,6 +1,6 @@
 # cmem-plugin-yaml2json
 
-Convert YAML input to JSON files
+Load and parse YAML documents.
 
 This is a plugin for [eccenca](https://eccenca.com) [Corporate Memory](https://documentation.eccenca.com).
 
