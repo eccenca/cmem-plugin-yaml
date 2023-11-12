@@ -6,47 +6,54 @@ from tempfile import mkdtemp
 from typing import Sequence, BinaryIO
 
 import yaml
-
-from cmem_plugin_base.dataintegration.utils import setup_cmempy_user_access
-from cmem_plugin_base.dataintegration.context import ExecutionContext, ExecutionReport
-from cmem_plugin_base.dataintegration.entity import (
-    Entities,
-    Entity,
-)
-from cmem_plugin_base.dataintegration.description import Plugin, PluginParameter, Icon
-from cmem_plugin_base.dataintegration.plugins import WorkflowPlugin
-from cmem_plugin_base.dataintegration.parameter.choice import ChoiceParameterType
-from cmem_plugin_base.dataintegration.parameter.code import YamlCode
-from cmem_plugin_base.dataintegration.parameter.dataset import DatasetParameterType
-from cmem_plugin_base.dataintegration.parameter.resource import ResourceParameterType
-from cmem_plugin_base.dataintegration.ports import (
-    FixedNumberOfInputs,
-    FlexibleSchemaPort,
-)
-
 from cmem.cmempy.workspace.projects.datasets.dataset import post_resource
 from cmem.cmempy.workspace.projects.resources.resource import (
     resource_exist,
     get_resource_response,
 )
+from cmem_plugin_base.dataintegration.context import ExecutionContext, ExecutionReport
+from cmem_plugin_base.dataintegration.description import Plugin, PluginParameter, Icon
+from cmem_plugin_base.dataintegration.entity import (
+    Entities,
+    Entity,
+)
+from cmem_plugin_base.dataintegration.parameter.choice import ChoiceParameterType
+from cmem_plugin_base.dataintegration.parameter.code import YamlCode
+from cmem_plugin_base.dataintegration.parameter.dataset import DatasetParameterType
+from cmem_plugin_base.dataintegration.parameter.resource import ResourceParameterType
+from cmem_plugin_base.dataintegration.plugins import WorkflowPlugin
+from cmem_plugin_base.dataintegration.ports import (
+    FixedNumberOfInputs,
+    FlexibleSchemaPort,
+)
+from cmem_plugin_base.dataintegration.utils import setup_cmempy_user_access
 
 SOURCE_INPUT = "input"
-SOURCE_FILE = "file"
 SOURCE_CODE = "code"
+SOURCE_FILE = "file"
 SOURCE_OPTIONS = OrderedDict(
     {
-        SOURCE_INPUT: "Content is parsed from an *input* port in a workflow.",
-        SOURCE_FILE: "Content is parsed from an uploaded project *file* resource.",
-        SOURCE_CODE: "Content is parsed from the YAML *code* field below.",
+        SOURCE_INPUT: f"{SOURCE_INPUT}: "
+        "Content is parsed from an input port in a workflow (default).",
+        SOURCE_CODE: f"{SOURCE_CODE}: "
+        "Content is parsed from the YAML code field below.",
+        SOURCE_FILE: f"{SOURCE_FILE}: "
+        "Content is parsed from an uploaded project file resource (advanced option).",
     }
 )
 
 TARGET_OUTPUT = "output"
-TARGET_DATASET = "dataset"
+TARGET_JSON_OUTPUT = "json-output"
+TARGET_JSON_DATASET = "json-dataset"
 TARGET_OPTIONS = OrderedDict(
     {
-        TARGET_OUTPUT: "Parsed structure is send as JSON to the *output* port.",
-        TARGET_DATASET: "Parsed structure is saved in a JSON *dataset*.",
+        TARGET_JSON_OUTPUT: f"{TARGET_JSON_OUTPUT}: "
+        "Parsed structure will be send as JSON to the output port (current default).",
+        TARGET_JSON_DATASET: f"{TARGET_JSON_DATASET}: "
+        "Parsed structure will be is saved in a JSON dataset (advanced option).",
+        TARGET_OUTPUT: f"{TARGET_OUTPUT}: "
+        "Parsed structure will be send as entities to the output port "
+        "(not implemented yet, later default).",
     }
 )
 
@@ -69,7 +76,7 @@ TARGET_OPTIONS = OrderedDict(
             label="Target",
             description="",
             param_type=ChoiceParameterType(TARGET_OPTIONS),
-            default_value=TARGET_OUTPUT,
+            default_value=TARGET_JSON_OUTPUT,
         ),
         PluginParameter(
             name="source_code",
@@ -81,6 +88,7 @@ TARGET_OPTIONS = OrderedDict(
             description="Which YAML file do you want to load into a JSON dataset? "
             "The dropdown shows file resources from the current project.",
             param_type=ResourceParameterType(),
+            advanced=True,
             default_value="",
         ),
         PluginParameter(
@@ -89,6 +97,7 @@ TARGET_OPTIONS = OrderedDict(
             description="Where do you want to save the result of the conversion? "
             "The dropdown shows JSON datasets from the current project.",
             param_type=DatasetParameterType(dataset_type="json"),
+            advanced=True,
             default_value="",
         ),
     ],
@@ -166,10 +175,10 @@ class ParseYaml(WorkflowPlugin):
                         f"The file '{self.source_file}' does not exist "
                         "in the project."
                     )
-        if self.target_mode == TARGET_DATASET:
+        if self.target_mode == TARGET_JSON_DATASET:
             if self.target_dataset == "":
                 self._raise_error(
-                    f"When using the target mode '{TARGET_DATASET}', "
+                    f"When using the target mode '{TARGET_JSON_DATASET}', "
                     "you need to select a JSON dataset."
                 )
 
@@ -241,4 +250,3 @@ class ParseYaml(WorkflowPlugin):
         if logger:
             logger.info(f"JSON written to {json_file}")
         return json_file
-
