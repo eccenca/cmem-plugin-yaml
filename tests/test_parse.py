@@ -3,12 +3,12 @@ from pathlib import Path
 
 import pytest
 
-from cmem_plugin_yaml2json.parse import yaml2json
+from cmem_plugin_yaml2json.parse import ParseYaml
 from tests import FIXTURE_DIR
 
 
 def test_success():
-    json_file = yaml2json(Path(f"{FIXTURE_DIR}/test.yml"))
+    json_file = ParseYaml.yaml2json(Path(f"{FIXTURE_DIR}/test.yml"))
     with open(json_file, "r", encoding="utf-8") as reader:
         parsed_json = json.load(reader)
     assert isinstance(parsed_json, object)
@@ -19,6 +19,6 @@ def test_success():
 
 def test_fail():
     with pytest.raises(ValueError):
-        yaml2json(Path(f"{FIXTURE_DIR}/will-be-str.yml"))
+        ParseYaml.yaml2json(Path(f"{FIXTURE_DIR}/will-be-str.yml"))
     with pytest.raises(ValueError):
-        yaml2json(Path(f"{FIXTURE_DIR}/will-be-int.yml"))
+        ParseYaml.yaml2json(Path(f"{FIXTURE_DIR}/will-be-int.yml"))

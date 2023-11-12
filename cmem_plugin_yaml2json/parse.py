@@ -51,20 +51,6 @@ TARGET_OPTIONS = OrderedDict(
 )
 
 
-def yaml2json(yaml_file: Path, logger=None) -> Path:
-    """Converts a YAML file to a JSON file."""
-    json_file = Path(f"{mkdtemp()}/{yaml_file.name}.json")
-    with open(yaml_file, "r", encoding="utf-8") as yaml_reader:
-        yaml_content = yaml.safe_load(yaml_reader)
-    if not isinstance(yaml_content, (dict, list)):
-        raise ValueError("YAML content could not be parsed to a dict or list.")
-    with open(json_file, "w", encoding="utf-8") as json_writer:
-        json.dump(yaml_content, json_writer)
-    if logger:
-        logger.info(f"JSON written to {json_file}")
-    return json_file
-
-
 @Plugin(
     label="Parse YAML",
     plugin_id="cmem_plugin_yaml-parse",
@@ -227,7 +213,7 @@ class ParseYaml(WorkflowPlugin):
         setup_cmempy_user_access(context.user)
         self.temp_dir = mkdtemp()
         file_yaml = self._get_input()
-        file_json = yaml2json(file_yaml, logger=self.log)
+        file_json = self.yaml2json(file_yaml, logger=self.log)
         with open(file_json, "r", encoding="utf-8") as reader:
             post_resource(
                 project_id=self.project,
@@ -241,3 +227,18 @@ class ParseYaml(WorkflowPlugin):
                 operation_desc="YAML document parsed",
             )
         )
+
+    @staticmethod
+    def yaml2json(yaml_file: Path, logger=None) -> Path:
+        """Converts a YAML file to a JSON file."""
+        json_file = Path(f"{mkdtemp()}/{yaml_file.name}.json")
+        with open(yaml_file, "r", encoding="utf-8") as yaml_reader:
+            yaml_content = yaml.safe_load(yaml_reader)
+        if not isinstance(yaml_content, (dict, list)):
+            raise ValueError("YAML content could not be parsed to a dict or list.")
+        with open(json_file, "w", encoding="utf-8") as json_writer:
+            json.dump(yaml_content, json_writer)
+        if logger:
+            logger.info(f"JSON written to {json_file}")
+        return json_file
+
