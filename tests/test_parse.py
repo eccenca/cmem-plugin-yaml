@@ -1,3 +1,4 @@
+"""test parse plugin"""
 import json
 from pathlib import Path
 
@@ -7,18 +8,19 @@ from cmem_plugin_yaml2json.parse import ParseYaml
 from tests import FIXTURE_DIR
 
 
-def test_success():
+def test_success() -> None:
+    """Test successful executions"""
+    number_of_tasks = 16
     json_file = ParseYaml.yaml2json(Path(f"{FIXTURE_DIR}/test.yml"))
-    with open(json_file, encoding="utf-8") as reader:
-        parsed_json = json.load(reader)
-    assert isinstance(parsed_json, object)
+    with Path.open(json_file, encoding="utf-8") as reader:
+        parsed_json = dict(json.load(reader))
     assert parsed_json["version"] == "3"
-    assert len(parsed_json["tasks"]) == 16
-    print(json_file)
+    assert len(parsed_json["tasks"]) == number_of_tasks
 
 
-def test_fail():
-    with pytest.raises(ValueError):
+def test_fail() -> None:
+    """Test failing executions"""
+    with pytest.raises(TypeError):
         ParseYaml.yaml2json(Path(f"{FIXTURE_DIR}/will-be-str.yml"))
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         ParseYaml.yaml2json(Path(f"{FIXTURE_DIR}/will-be-int.yml"))

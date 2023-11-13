@@ -22,7 +22,7 @@ from cmem_plugin_base.dataintegration.parameter.choice import ChoiceParameterTyp
 from cmem_plugin_base.dataintegration.parameter.code import YamlCode
 from cmem_plugin_base.dataintegration.parameter.dataset import DatasetParameterType
 from cmem_plugin_base.dataintegration.parameter.resource import ResourceParameterType
-from cmem_plugin_base.dataintegration.plugins import WorkflowPlugin
+from cmem_plugin_base.dataintegration.plugins import PluginLogger, WorkflowPlugin
 from cmem_plugin_base.dataintegration.ports import (
     FixedNumberOfInputs,
     FlexibleSchemaPort,
@@ -56,6 +56,8 @@ TARGET_OPTIONS = OrderedDict(
         "(not implemented yet, later default).",
     }
 )
+
+DEFAULT_YAML = YamlCode("# enter your YAML code here")
 
 
 @Plugin(
@@ -118,11 +120,11 @@ class ParseYaml(WorkflowPlugin):
     project: str
     temp_dir: str
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         source_mode: str = SOURCE_INPUT,
         target_mode: str = TARGET_OUTPUT,
-        source_code: YamlCode = YamlCode(""),
+        source_code: YamlCode = DEFAULT_YAML,
         source_file: str = "",
         target_dataset: str = "",
     ) -> None:
@@ -135,8 +137,8 @@ class ParseYaml(WorkflowPlugin):
         self._validate_config()
         self._set_ports()
 
-    def _raise_error(self, message: str):
-        """Sends a report and raises an error"""
+    def _raise_error(self, message: str) -> None:
+        """Send a report and raise an error"""
         if self.execution_context:
             self.execution_context.report.update(
                 ExecutionReport(
@@ -145,8 +147,8 @@ class ParseYaml(WorkflowPlugin):
             )
         raise ValueError(message)
 
-    def _set_ports(self):
-        """Defines input/output ports based on the configuration."""
+    def _set_ports(self) -> None:
+        """Define input/output ports based on the configuration"""
         self.input_ports = FixedNumberOfInputs([])
         self.output_port = None
 
@@ -155,47 +157,44 @@ class ParseYaml(WorkflowPlugin):
         if self.target_mode == TARGET_OUTPUT:
             self.output_port = FlexibleSchemaPort()
 
-    def _validate_config(self):
-        """Raises value errors on bad configurations."""
-        if self.source_mode == SOURCE_CODE:
-            if str(self.source_code) == "":
-                self._raise_error(
-                    f"When using the source mode '{SOURCE_CODE}', "
-                    "you need to enter or paste YAML Source Code in the code field."
-                )
+    def _validate_config(self) -> None:
+        """Raise value errors on bad configurations"""
+        if self.source_mode == SOURCE_CODE and str(self.source_code) == "":
+            self._raise_error(
+                f"When using the source mode '{SOURCE_CODE}', "
+                "you need to enter or paste YAML Source Code in the code field."
+            )
         if self.source_mode == SOURCE_FILE:
             if self.source_file == "":
                 self._raise_error(
                     f"When using the source mode '{SOURCE_FILE}', "
                     "you need to select a YAML file."
                 )
-            if self.execution_context:
-                if not resource_exist(self.project, self.source_file):
-                    self._raise_error(
-                        f"The file '{self.source_file}' does not exist " "in the project."
-                    )
-        if self.target_mode == TARGET_JSON_DATASET:
-            if self.target_dataset == "":
+            if self.execution_context and not resource_exist(self.project, self.source_file):
                 self._raise_error(
-                    f"When using the target mode '{TARGET_JSON_DATASET}', "
-                    "you need to select a JSON dataset."
+                    f"The file '{self.source_file}' does not exist " "in the project."
                 )
+        if self.target_mode == TARGET_JSON_DATASET and self.target_dataset == "":
+            self._raise_error(
+                f"When using the target mode '{TARGET_JSON_DATASET}', "
+                "you need to select a JSON dataset."
+            )
 
-    def _get_input_file(self, writer: BinaryIO):
+    def _get_input_file(self, writer: BinaryIO) -> None:
         """Get input YAML file from project file."""
         with get_resource_response(self.project, self.source_file) as response:
             for chunk in response.iter_content(chunk_size=8192):
                 writer.write(chunk)
 
-    def _get_input_code(self, writer: BinaryIO):
+    def _get_input_code(self, writer: BinaryIO) -> None:
         """Get input YAML file from direct YAML code."""
         writer.write(self.source_code.encode("utf-8"))
 
-    def _get_input_input(self, writer: BinaryIO):
+    def _get_input_input(self, writer: BinaryIO) -> None:
         """Get input YAML file from fist path of first entity of first input."""
         first_input: Entities = self.inputs[0]
         first_entity: Entity = next(first_input.entities)
-        first_value: str = list(first_entity.values)[0][0]
+        first_value: str = next(iter(first_entity.values))[0]
         writer.write(first_value.encode("utf-8"))
 
     def _get_input(self) -> Path:
@@ -206,11 +205,12 @@ class ParseYaml(WorkflowPlugin):
             get_input = getattr(self, f"_get_input_{self.source_mode}")
         except AttributeError as error:
             raise ValueError(f"Source Mode {self.source_mode} not implemented yet.") from error
-        with open(file_yaml, "wb") as writer:
+        with Path.open(file_yaml, "wb") as writer:
             get_input(writer)
         return file_yaml
 
     def execute(self, inputs: Sequence[Entities], context: ExecutionContext) -> None:
+        """Execute the workflow plugin on a given sequence of entities"""
         self.log.info("start execution")
         self.inputs = inputs
         self.execution_context = context
@@ -220,7 +220,7 @@ class ParseYaml(WorkflowPlugin):
         self.temp_dir = mkdtemp()
         file_yaml = self._get_input()
         file_json = self.yaml2json(file_yaml, logger=self.log)
-        with open(file_json, encoding="utf-8") as reader:
+        with Path.open(file_json, encoding="utf-8") as reader:
             post_resource(
                 project_id=self.project,
                 dataset_id=self.target_dataset,
@@ -235,14 +235,14 @@ class ParseYaml(WorkflowPlugin):
         )
 
     @staticmethod
-    def yaml2json(yaml_file: Path, logger=None) -> Path:
-        """Converts a YAML file to a JSON file."""
+    def yaml2json(yaml_file: Path, logger: PluginLogger = None) -> Path:
+        """Convert a YAML file to a JSON file."""
         json_file = Path(f"{mkdtemp()}/{yaml_file.name}.json")
-        with open(yaml_file, encoding="utf-8") as yaml_reader:
+        with Path.open(yaml_file, encoding="utf-8") as yaml_reader:
             yaml_content = yaml.safe_load(yaml_reader)
-        if not isinstance(yaml_content, (dict, list)):
-            raise ValueError("YAML content could not be parsed to a dict or list.")
-        with open(json_file, "w", encoding="utf-8") as json_writer:
+        if not isinstance(yaml_content, dict | list):
+            raise TypeError("YAML content could not be parsed to a dict or list.")
+        with Path.open(json_file, "w", encoding="utf-8") as json_writer:
             json.dump(yaml_content, json_writer)
         if logger:
             logger.info(f"JSON written to {json_file}")
