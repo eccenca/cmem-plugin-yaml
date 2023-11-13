@@ -1,18 +1,19 @@
 """Load YAML to JSON dataset workflow plugin module"""
 import json
 from collections import OrderedDict
+from collections.abc import Sequence
 from pathlib import Path
 from tempfile import mkdtemp
-from typing import Sequence, BinaryIO
+from typing import BinaryIO
 
 import yaml
 from cmem.cmempy.workspace.projects.datasets.dataset import post_resource
 from cmem.cmempy.workspace.projects.resources.resource import (
-    resource_exist,
     get_resource_response,
+    resource_exist,
 )
 from cmem_plugin_base.dataintegration.context import ExecutionContext, ExecutionReport
-from cmem_plugin_base.dataintegration.description import Plugin, PluginParameter, Icon
+from cmem_plugin_base.dataintegration.description import Icon, Plugin, PluginParameter
 from cmem_plugin_base.dataintegration.entity import (
     Entities,
     Entity,
@@ -35,8 +36,7 @@ SOURCE_OPTIONS = OrderedDict(
     {
         SOURCE_INPUT: f"{SOURCE_INPUT}: "
         "Content is parsed from an input port in a workflow (default).",
-        SOURCE_CODE: f"{SOURCE_CODE}: "
-        "Content is parsed from the YAML code field below.",
+        SOURCE_CODE: f"{SOURCE_CODE}: " "Content is parsed from the YAML code field below.",
         SOURCE_FILE: f"{SOURCE_FILE}: "
         "Content is parsed from an uploaded project file resource (advanced option).",
     }
@@ -136,7 +136,7 @@ class ParseYaml(WorkflowPlugin):
         self._set_ports()
 
     def _raise_error(self, message: str):
-        """sends a report and raises an error"""
+        """Sends a report and raises an error"""
         if self.execution_context:
             self.execution_context.report.update(
                 ExecutionReport(
@@ -172,8 +172,7 @@ class ParseYaml(WorkflowPlugin):
             if self.execution_context:
                 if not resource_exist(self.project, self.source_file):
                     self._raise_error(
-                        f"The file '{self.source_file}' does not exist "
-                        "in the project."
+                        f"The file '{self.source_file}' does not exist " "in the project."
                     )
         if self.target_mode == TARGET_JSON_DATASET:
             if self.target_dataset == "":
@@ -206,9 +205,7 @@ class ParseYaml(WorkflowPlugin):
             # Select a _get_input_* function based on source_mode
             get_input = getattr(self, f"_get_input_{self.source_mode}")
         except AttributeError as error:
-            raise ValueError(
-                f"Source Mode {self.source_mode} not implemented yet."
-            ) from error
+            raise ValueError(f"Source Mode {self.source_mode} not implemented yet.") from error
         with open(file_yaml, "wb") as writer:
             get_input(writer)
         return file_yaml
@@ -223,7 +220,7 @@ class ParseYaml(WorkflowPlugin):
         self.temp_dir = mkdtemp()
         file_yaml = self._get_input()
         file_json = self.yaml2json(file_yaml, logger=self.log)
-        with open(file_json, "r", encoding="utf-8") as reader:
+        with open(file_json, encoding="utf-8") as reader:
             post_resource(
                 project_id=self.project,
                 dataset_id=self.target_dataset,
@@ -241,7 +238,7 @@ class ParseYaml(WorkflowPlugin):
     def yaml2json(yaml_file: Path, logger=None) -> Path:
         """Converts a YAML file to a JSON file."""
         json_file = Path(f"{mkdtemp()}/{yaml_file.name}.json")
-        with open(yaml_file, "r", encoding="utf-8") as yaml_reader:
+        with open(yaml_file, encoding="utf-8") as yaml_reader:
             yaml_content = yaml.safe_load(yaml_reader)
         if not isinstance(yaml_content, (dict, list)):
             raise ValueError("YAML content could not be parsed to a dict or list.")

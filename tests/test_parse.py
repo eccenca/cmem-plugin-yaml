@@ -9,7 +9,7 @@ from tests import FIXTURE_DIR
 
 def test_success():
     json_file = ParseYaml.yaml2json(Path(f"{FIXTURE_DIR}/test.yml"))
-    with open(json_file, "r", encoding="utf-8") as reader:
+    with open(json_file, encoding="utf-8") as reader:
         parsed_json = json.load(reader)
     assert isinstance(parsed_json, object)
     assert parsed_json["version"] == "3"
