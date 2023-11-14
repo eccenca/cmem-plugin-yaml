@@ -1,22 +1,145 @@
 """Test different source and target modes"""
+import io
+import json
+from pathlib import Path
 
-from cmem_plugin_base.dataintegration.entity import Entities
+import pytest
+import yaml
+from cmem.cmempy.workspace.projects.datasets.dataset import make_new_dataset
+from cmem.cmempy.workspace.projects.project import delete_project, make_new_project
+from cmem.cmempy.workspace.projects.resources.resource import (
+    create_resource,
+    get_resource_response,
+)
+from cmem_plugin_base.dataintegration.entity import Entities, Entity, EntityPath, EntitySchema
 from cmem_plugin_base.dataintegration.parameter.code import YamlCode
 
-from cmem_plugin_yaml.parse import ParseYaml, SOURCE_CODE, TARGET_JSON_ENTITIES
-from tests.utils import TestExecutionContext
+from cmem_plugin_yaml.parse import (
+    SOURCE_CODE,
+    SOURCE_FILE,
+    TARGET_ENTITIES,
+    TARGET_JSON_DATASET,
+    TARGET_JSON_ENTITIES,
+    ParseYaml,
+)
+from tests import PROJECT_ROOT
+from tests.utils import PROJECT_NAME, TestExecutionContext, needs_cmem
 
-YAML_SOURCE = YamlCode("""---
-ttt: 123
-""")
+DATASET_NAME = "json_dataset"
+RESOURCE_NAME = "output_json"
+DATASET_TYPE = "json"
+
+
+@pytest.fixture()
+def di_environment() -> object:
+    """Provide the DI build project incl. assets."""
+    make_new_project(PROJECT_NAME)
+    make_new_dataset(
+        project_name=PROJECT_NAME,
+        dataset_name=DATASET_NAME,
+        dataset_type=DATASET_TYPE,
+        parameters={"file": RESOURCE_NAME},
+        autoconfigure=False,
+    )
+    with io.StringIO('{"key": "value"}') as response_file:
+        create_resource(
+            project_name=PROJECT_NAME,
+            resource_name=RESOURCE_NAME,
+            file_resource=response_file,
+            replace=True,
+        )
+    yield {"project": PROJECT_NAME, "dataset": DATASET_NAME, "resource": RESOURCE_NAME}
+    delete_project(PROJECT_NAME)
+
+
+def test_bad_configurations() -> None:
+    """Test some bad configuration"""
+    # source mode 'code' without configured YAML code
+    with pytest.raises(
+        ValueError, match="you need to enter or paste YAML Source Code in the code field"
+    ):
+        ParseYaml(
+            source_mode=SOURCE_CODE,
+            target_mode=TARGET_JSON_ENTITIES,
+            source_code=YamlCode(""),
+        )
+
+    # source mode 'file' without configured file
+    with pytest.raises(ValueError, match="you need to select a YAML file"):
+        ParseYaml(
+            source_mode=SOURCE_FILE,
+            target_mode=TARGET_JSON_ENTITIES,
+        )
+
+    # target mode 'dataset' without configured JSON dataset
+    with pytest.raises(ValueError, match="you need to select a JSON dataset"):
+        ParseYaml(
+            source_mode=SOURCE_CODE,
+            target_mode=TARGET_JSON_DATASET,
+            source_code=YamlCode("---"),
+        )
+
+    # yaml not complete
+    with pytest.raises(TypeError, match="YAML content could not be parsed to a dict or list"):
+        ParseYaml(
+            source_mode=SOURCE_CODE,
+            target_mode=TARGET_JSON_ENTITIES,
+            source_code=YamlCode("---"),
+        ).execute([], TestExecutionContext())
+
+    # unknown source mode
+    with pytest.raises(ValueError, match="Source mode not implemented yet"):
+        ParseYaml(
+            source_mode="not-there",
+            target_mode=TARGET_JSON_ENTITIES,
+            source_code=YamlCode(""),
+        ).execute([], TestExecutionContext())
+
+    # unknown target mode
+    with pytest.raises(ValueError, match="Target mode not implemented yet"):
+        ParseYaml(
+            source_mode=SOURCE_CODE,
+            target_mode="not-there",
+            source_code=YamlCode("ttt: 123"),
+        ).execute([], TestExecutionContext())
 
 
 def test_code_to_json_entities() -> None:
     """Test source to json entities"""
+    with Path.open(Path(PROJECT_ROOT) / "Taskfile.yaml") as reader:
+        yaml_code = reader.read()
+    yaml_as_dict: dict = yaml.safe_load(yaml_code)
+    yaml_as_json = json.dumps(yaml_as_dict)
+
     plugin = ParseYaml(
         source_mode=SOURCE_CODE,
         target_mode=TARGET_JSON_ENTITIES,
-        source_code=YAML_SOURCE,
+        source_code=YamlCode(yaml_code),
     )
     entities: Entities = plugin.execute([], TestExecutionContext())
-    assert next(entities.entities).values[0]
+    json_result: str = next(entities.entities).values[0][0]
+    assert json_result == yaml_as_json
+
+
+@needs_cmem
+def test_entities_to_json_dataset(di_environment: dict) -> None:
+    """Test entities to JSON dataset"""
+    with Path.open(Path(PROJECT_ROOT) / "Taskfile.yaml") as reader:
+        yaml_code = reader.read()
+    yaml_as_dict: dict = yaml.safe_load(yaml_code)
+    yaml_as_json = json.dumps(yaml_as_dict)
+
+    schema = EntitySchema(type_uri="urn:x-yaml:document", paths=[EntityPath(path="yaml-src")])
+    entities = Entities(
+        iter([Entity(uri="urn:x-yaml:source", values=[[yaml_code]])]), schema=schema
+    )
+
+    plugin = ParseYaml(
+        source_mode=TARGET_ENTITIES,
+        target_mode=TARGET_JSON_DATASET,
+        target_dataset=di_environment["dataset"],
+    )
+    plugin.execute(inputs=[entities], context=TestExecutionContext())
+
+    with get_resource_response(di_environment["project"], di_environment["resource"]) as response:
+        assert response.text == yaml_as_json

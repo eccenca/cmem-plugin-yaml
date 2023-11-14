@@ -50,7 +50,7 @@ TARGET_JSON_DATASET = "json_dataset"
 TARGET_OPTIONS = OrderedDict(
     {
         TARGET_JSON_ENTITIES: f"{TARGET_JSON_ENTITIES}: "
-        "Parsed structure will be send as JSON to the output port (current default).",
+        "Parsed structure will be send as JSON entities to the output port (current default).",
         TARGET_JSON_DATASET: f"{TARGET_JSON_DATASET}: "
         "Parsed structure will be is saved in a JSON dataset (advanced option).",
         TARGET_ENTITIES: f"{TARGET_ENTITIES}: "
@@ -141,7 +141,7 @@ class ParseYaml(WorkflowPlugin):
 
     def _raise_error(self, message: str) -> None:
         """Send a report and raise an error"""
-        if self.execution_context:
+        if hasattr(self, "execution_context"):
             self.execution_context.report.update(
                 ExecutionReport(
                     entity_count=0, operation_desc="YAML document parsed", error=message
@@ -172,10 +172,10 @@ class ParseYaml(WorkflowPlugin):
                     f"When using the source mode '{SOURCE_FILE}', "
                     "you need to select a YAML file."
                 )
-            if self.execution_context and not resource_exist(self.project, self.source_file):
-                self._raise_error(
-                    f"The file '{self.source_file}' does not exist " "in the project."
-                )
+            if hasattr(self, "execution_context") and not resource_exist(
+                self.project, self.source_file
+            ):
+                self._raise_error(f"The file '{self.source_file}' does not exist in the project.")
         if self.target_mode == TARGET_JSON_DATASET and self.target_dataset == "":
             self._raise_error(
                 f"When using the target mode '{TARGET_JSON_DATASET}', "
@@ -206,7 +206,7 @@ class ParseYaml(WorkflowPlugin):
             # Select a _get_input_* function based on source_mode
             get_input = getattr(self, f"_get_input_{self.source_mode}")
         except AttributeError as error:
-            raise ValueError(f"Source mode '{self.source_mode}' not implemented yet.") from error
+            raise ValueError(f"Source mode not implemented yet: '{self.source_mode}'") from error
         with Path.open(file_yaml, "wb") as writer:
             get_input(writer)
         return file_yaml
@@ -248,7 +248,7 @@ class ParseYaml(WorkflowPlugin):
             # Select a _provide_output_* function based on target_mode
             provide_output = getattr(self, f"_provide_output_{self.target_mode}")
         except AttributeError as error:
-            raise ValueError(f"Target mode '{self.target_mode}' not implemented yet.") from error
+            raise ValueError(f"Target mode not implemented yet: '{self.target_mode}'") from error
         return provide_output(file_json)
 
     def execute(self, inputs: Sequence[Entities], context: ExecutionContext) -> Entities | None:

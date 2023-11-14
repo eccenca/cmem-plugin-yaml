@@ -15,6 +15,9 @@ from cmem_plugin_base.dataintegration.context import (
     UserContext,
 )
 
+PROJECT_NAME = "yaml_test_project"
+
+
 needs_cmem = pytest.mark.skipif(
     os.environ.get("CMEM_BASE_URI", "") == "", reason="Needs CMEM configuration"
 )
@@ -43,7 +46,7 @@ class TestPluginContext(PluginContext):
 
     def __init__(
         self,
-        project_id: str = "dummyProject",
+        project_id: str = PROJECT_NAME,
     ):
         self.project_id = project_id
         self.user = TestUserContext()
@@ -54,7 +57,7 @@ class TestTaskContext(TaskContext):
 
     __test__ = False
 
-    def __init__(self, project_id: str = "dummyProject", task_id: str = "dummyTask"):
+    def __init__(self, project_id: str = PROJECT_NAME, task_id: str = "dummyTask"):
         self.project_id = lambda: project_id
         self.task_id = lambda: task_id
 
@@ -64,7 +67,7 @@ class TestExecutionContext(ExecutionContext):
 
     __test__ = False
 
-    def __init__(self, project_id: str = "dummyProject", task_id: str = "dummyTask"):
+    def __init__(self, project_id: str = PROJECT_NAME, task_id: str = "dummyTask"):
         self.report = ReportContext()
         self.task = TestTaskContext(project_id=project_id, task_id=task_id)
         self.user = TestUserContext()
