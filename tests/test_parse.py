@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from cmem_plugin_yaml2json.parse import ParseYaml
+from cmem_plugin_yaml.parse import ParseYaml
 from tests import FIXTURE_DIR
 
 

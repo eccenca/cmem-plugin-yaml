@@ -5,6 +5,6 @@ author_mail: cmempy-developer@eccenca.com
 author_name: eccenca GmbH
 github_page: ''
 project_description: Load and parse YAML documents.
-project_slug: yaml2json
+project_slug: yaml
 pypi: false
 
