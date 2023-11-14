@@ -43,8 +43,8 @@ SOURCE_OPTIONS = OrderedDict(
 )
 
 TARGET_OUTPUT = "output"
-TARGET_JSON_OUTPUT = "json-output"
-TARGET_JSON_DATASET = "json-dataset"
+TARGET_JSON_OUTPUT = "json_output"
+TARGET_JSON_DATASET = "json_dataset"
 TARGET_OPTIONS = OrderedDict(
     {
         TARGET_JSON_OUTPUT: f"{TARGET_JSON_OUTPUT}: "
@@ -204,12 +204,37 @@ class ParseYaml(WorkflowPlugin):
             # Select a _get_input_* function based on source_mode
             get_input = getattr(self, f"_get_input_{self.source_mode}")
         except AttributeError as error:
-            raise ValueError(f"Source Mode {self.source_mode} not implemented yet.") from error
+            raise ValueError(f"Source mode {self.source_mode} not implemented yet.") from error
         with Path.open(file_yaml, "wb") as writer:
             get_input(writer)
         return file_yaml
 
-    def execute(self, inputs: Sequence[Entities], context: ExecutionContext) -> None:
+    def _provide_output_json_dataset(self, file_json: Path) -> None:
+        """Output as JSON to a dataset resource file"""
+        with Path.open(file_json, encoding="utf-8") as reader:
+            post_resource(
+                project_id=self.project,
+                dataset_id=self.target_dataset,
+                file_resource=reader,
+            )
+        self.log.info(f"JSON uploaded to dataset '{self.target_dataset}'.")
+        self.execution_context.report.update(
+            ExecutionReport(
+                entity_count=1,
+                operation_desc="YAML document parsed",
+            )
+        )
+
+    def _provide_output(self, file_json: Path) -> Entities | None:
+        """Depending on configuration, provides the parsed content for different outputs"""
+        try:
+            # Select a _provide_output_* function based on target_mode
+            provide_output = getattr(self, f"_provide_output_{self.target_mode}")
+        except AttributeError as error:
+            raise ValueError(f"Target mode {self.target_mode} not implemented yet.") from error
+        return provide_output(file_json)
+
+    def execute(self, inputs: Sequence[Entities], context: ExecutionContext) -> Entities | None:
         """Execute the workflow plugin on a given sequence of entities"""
         self.log.info("start execution")
         self.inputs = inputs
@@ -220,19 +245,7 @@ class ParseYaml(WorkflowPlugin):
         self.temp_dir = mkdtemp()
         file_yaml = self._get_input()
         file_json = self.yaml2json(file_yaml, logger=self.log)
-        with Path.open(file_json, encoding="utf-8") as reader:
-            post_resource(
-                project_id=self.project,
-                dataset_id=self.target_dataset,
-                file_resource=reader,
-            )
-        self.log.info(f"JSON uploaded to dataset '{self.target_dataset}'.")
-        context.report.update(
-            ExecutionReport(
-                entity_count=1,
-                operation_desc="YAML document parsed",
-            )
-        )
+        return self._provide_output(file_json)
 
     @staticmethod
     def yaml2json(yaml_file: Path, logger: PluginLogger = None) -> Path:
