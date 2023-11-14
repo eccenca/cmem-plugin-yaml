@@ -3,8 +3,8 @@ _commit: v5.3.2-16-gc545bd4
 _src_path: gh:eccenca/cmem-plugin-template
 author_mail: cmempy-developer@eccenca.com
 author_name: eccenca GmbH
-github_page: ''
+github_page: https://github.com/eccenca/cmem-plugin-yaml
 project_description: Load and parse YAML documents.
 project_slug: yaml
-pypi: false
+pypi: true
 
