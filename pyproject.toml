@@ -71,7 +71,7 @@ ignore = [
     "D213",    # Multi-line docstring summary should start at the second line
     "D400",    # First line should end with a period
     "D415",    # First line should end with a period, question mark, or exclamation point
-    "EM",      # Exception texts -> https://docs.astral.sh/ruff/rules/#flake8-errmsg-em
+    "EM",      # Exception texts - https://docs.astral.sh/ruff/rules/#flake8-errmsg-em
     "G004",    # Logging statement uses f-string
     "ISC001",  # single-line-implicit-string-concatenation
     "S101",    # use of assert detected
