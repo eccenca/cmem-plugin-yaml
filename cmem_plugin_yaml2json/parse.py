@@ -17,6 +17,8 @@ from cmem_plugin_base.dataintegration.description import Icon, Plugin, PluginPar
 from cmem_plugin_base.dataintegration.entity import (
     Entities,
     Entity,
+    EntityPath,
+    EntitySchema,
 )
 from cmem_plugin_base.dataintegration.parameter.choice import ChoiceParameterType
 from cmem_plugin_base.dataintegration.parameter.code import YamlCode
@@ -29,35 +31,35 @@ from cmem_plugin_base.dataintegration.ports import (
 )
 from cmem_plugin_base.dataintegration.utils import setup_cmempy_user_access
 
-SOURCE_INPUT = "input"
+SOURCE_INPUT = "entities"
 SOURCE_CODE = "code"
 SOURCE_FILE = "file"
 SOURCE_OPTIONS = OrderedDict(
     {
         SOURCE_INPUT: f"{SOURCE_INPUT}: "
-        "Content is parsed from an input port in a workflow (default).",
+        "Content is parsed from of the input port in a workflow (default).",
         SOURCE_CODE: f"{SOURCE_CODE}: " "Content is parsed from the YAML code field below.",
         SOURCE_FILE: f"{SOURCE_FILE}: "
         "Content is parsed from an uploaded project file resource (advanced option).",
     }
 )
 
-TARGET_OUTPUT = "output"
-TARGET_JSON_OUTPUT = "json_output"
+TARGET_ENTITIES = "entities"
+TARGET_JSON_ENTITIES = "json_entities"
 TARGET_JSON_DATASET = "json_dataset"
 TARGET_OPTIONS = OrderedDict(
     {
-        TARGET_JSON_OUTPUT: f"{TARGET_JSON_OUTPUT}: "
+        TARGET_JSON_ENTITIES: f"{TARGET_JSON_ENTITIES}: "
         "Parsed structure will be send as JSON to the output port (current default).",
         TARGET_JSON_DATASET: f"{TARGET_JSON_DATASET}: "
         "Parsed structure will be is saved in a JSON dataset (advanced option).",
-        TARGET_OUTPUT: f"{TARGET_OUTPUT}: "
+        TARGET_ENTITIES: f"{TARGET_ENTITIES}: "
         "Parsed structure will be send as entities to the output port "
         "(not implemented yet, later default).",
     }
 )
 
-DEFAULT_YAML = YamlCode("# enter your YAML code here")
+DEFAULT_YAML = YamlCode(f"# enter your YAML code here (and select '{SOURCE_CODE}' as input mode.")
 
 
 @Plugin(
@@ -78,7 +80,7 @@ DEFAULT_YAML = YamlCode("# enter your YAML code here")
             label="Target",
             description="",
             param_type=ChoiceParameterType(TARGET_OPTIONS),
-            default_value=TARGET_JSON_OUTPUT,
+            default_value=TARGET_JSON_ENTITIES,
         ),
         PluginParameter(
             name="source_code",
@@ -123,7 +125,7 @@ class ParseYaml(WorkflowPlugin):
     def __init__(  # noqa: PLR0913
         self,
         source_mode: str = SOURCE_INPUT,
-        target_mode: str = TARGET_OUTPUT,
+        target_mode: str = TARGET_ENTITIES,
         source_code: YamlCode = DEFAULT_YAML,
         source_file: str = "",
         target_dataset: str = "",
@@ -154,7 +156,7 @@ class ParseYaml(WorkflowPlugin):
 
         if self.source_mode == SOURCE_INPUT:
             self.input_ports = FixedNumberOfInputs([FlexibleSchemaPort()])
-        if self.target_mode == TARGET_OUTPUT:
+        if self.target_mode in (TARGET_ENTITIES, TARGET_JSON_ENTITIES):
             self.output_port = FlexibleSchemaPort()
 
     def _validate_config(self) -> None:
@@ -187,11 +189,11 @@ class ParseYaml(WorkflowPlugin):
                 writer.write(chunk)
 
     def _get_input_code(self, writer: BinaryIO) -> None:
-        """Get input YAML file from direct YAML code."""
+        """Get input YAML file from direct YAML code"""
         writer.write(self.source_code.encode("utf-8"))
 
-    def _get_input_input(self, writer: BinaryIO) -> None:
-        """Get input YAML file from fist path of first entity of first input."""
+    def _get_input_entities(self, writer: BinaryIO) -> None:
+        """Get input YAML from fist path of first entity of first input"""
         first_input: Entities = self.inputs[0]
         first_entity: Entity = next(first_input.entities)
         first_value: str = next(iter(first_entity.values))[0]
@@ -204,10 +206,25 @@ class ParseYaml(WorkflowPlugin):
             # Select a _get_input_* function based on source_mode
             get_input = getattr(self, f"_get_input_{self.source_mode}")
         except AttributeError as error:
-            raise ValueError(f"Source mode {self.source_mode} not implemented yet.") from error
+            raise ValueError(f"Source mode '{self.source_mode}' not implemented yet.") from error
         with Path.open(file_yaml, "wb") as writer:
             get_input(writer)
         return file_yaml
+
+    def _provide_output_json_entities(self, file_json: Path) -> Entities:
+        """Output as a single JSON entity"""
+        with Path.open(file_json, encoding="utf-8") as reader:
+            json_code = reader.read()
+        schema = EntitySchema(type_uri="urn:x-json:document", paths=[EntityPath(path="json-src")])
+        entities = iter([Entity(uri="urn:x-json:source", values=[[json_code]])])
+        self.log.info("JSON provided as single output entity.")
+        self.execution_context.report.update(
+            ExecutionReport(
+                entity_count=1,
+                operation_desc="JSON entity generated",
+            )
+        )
+        return Entities(entities=entities, schema=schema)
 
     def _provide_output_json_dataset(self, file_json: Path) -> None:
         """Output as JSON to a dataset resource file"""
@@ -221,7 +238,7 @@ class ParseYaml(WorkflowPlugin):
         self.execution_context.report.update(
             ExecutionReport(
                 entity_count=1,
-                operation_desc="YAML document parsed",
+                operation_desc="JSON dataset replaced",
             )
         )
 
@@ -231,7 +248,7 @@ class ParseYaml(WorkflowPlugin):
             # Select a _provide_output_* function based on target_mode
             provide_output = getattr(self, f"_provide_output_{self.target_mode}")
         except AttributeError as error:
-            raise ValueError(f"Target mode {self.target_mode} not implemented yet.") from error
+            raise ValueError(f"Target mode '{self.target_mode}' not implemented yet.") from error
         return provide_output(file_json)
 
     def execute(self, inputs: Sequence[Entities], context: ExecutionContext) -> Entities | None:
