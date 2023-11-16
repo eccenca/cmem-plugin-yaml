@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/)
 
-## [Unreleased]
+## [0.5.0] 2023-11-16
 
 ### Added
 
@@ -16,3 +16,4 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 - Target modes:
   - json_entities: Parsed structure will be sent as JSON entities to the output port (current default)
   - json_dataset: Parsed structure will be is saved in a JSON dataset (advanced option)
+
