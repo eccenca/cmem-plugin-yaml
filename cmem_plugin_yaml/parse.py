@@ -50,7 +50,7 @@ TARGET_JSON_DATASET = "json_dataset"
 TARGET_OPTIONS = OrderedDict(
     {
         TARGET_JSON_ENTITIES: f"{TARGET_JSON_ENTITIES}: "
-        "Parsed structure will be send as JSON entities to the output port (current default).",
+        "Parsed structure will be sent as JSON entities to the output port (current default).",
         TARGET_JSON_DATASET: f"{TARGET_JSON_DATASET}: "
         "Parsed structure will be is saved in a JSON dataset (advanced option).",
         TARGET_ENTITIES: f"{TARGET_ENTITIES}: "
