@@ -52,6 +52,7 @@ def di_environment() -> object:
     delete_project(PROJECT_NAME)
 
 
+@needs_cmem
 def test_bad_configurations() -> None:
     """Test some bad configuration"""
     # source mode 'code' without configured YAML code
@@ -104,6 +105,7 @@ def test_bad_configurations() -> None:
         ).execute([], TestExecutionContext())
 
 
+@needs_cmem
 def test_code_to_json_entities() -> None:
     """Test source to json entities"""
     with Path.open(Path(PROJECT_ROOT) / "Taskfile.yaml") as reader:
