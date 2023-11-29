@@ -14,14 +14,7 @@ from cmem.cmempy.workspace.projects.resources.resource import (
 from cmem_plugin_base.dataintegration.entity import Entities, Entity, EntityPath, EntitySchema
 from cmem_plugin_base.dataintegration.parameter.code import YamlCode
 
-from cmem_plugin_yaml.parse import (
-    SOURCE_CODE,
-    SOURCE_FILE,
-    TARGET_ENTITIES,
-    TARGET_JSON_DATASET,
-    TARGET_JSON_ENTITIES,
-    ParseYaml,
-)
+from cmem_plugin_yaml.parse import SOURCE, TARGET, ParseYaml
 from tests import PROJECT_ROOT
 from tests.utils import PROJECT_NAME, TestExecutionContext, needs_cmem
 
@@ -60,46 +53,46 @@ def test_bad_configurations() -> None:
         ValueError, match="you need to enter or paste YAML Source Code in the code field"
     ):
         ParseYaml(
-            source_mode=SOURCE_CODE,
-            target_mode=TARGET_JSON_ENTITIES,
+            source_mode=SOURCE.code,
+            target_mode=TARGET.json_entities,
             source_code=YamlCode(""),
         )
 
     # source mode 'file' without configured file
     with pytest.raises(ValueError, match="you need to select a YAML file"):
         ParseYaml(
-            source_mode=SOURCE_FILE,
-            target_mode=TARGET_JSON_ENTITIES,
+            source_mode=SOURCE.file,
+            target_mode=TARGET.json_entities,
         )
 
     # target mode 'dataset' without configured JSON dataset
     with pytest.raises(ValueError, match="you need to select a JSON dataset"):
         ParseYaml(
-            source_mode=SOURCE_CODE,
-            target_mode=TARGET_JSON_DATASET,
+            source_mode=SOURCE.code,
+            target_mode=TARGET.json_dataset,
             source_code=YamlCode("---"),
         )
 
     # yaml not complete
     with pytest.raises(TypeError, match="YAML content could not be parsed to a dict or list"):
         ParseYaml(
-            source_mode=SOURCE_CODE,
-            target_mode=TARGET_JSON_ENTITIES,
+            source_mode=SOURCE.code,
+            target_mode=TARGET.json_entities,
             source_code=YamlCode("---"),
         ).execute([], TestExecutionContext())
 
     # unknown source mode
-    with pytest.raises(ValueError, match="Source mode not implemented yet"):
+    with pytest.raises(ValueError, match="Unknown source mode"):
         ParseYaml(
             source_mode="not-there",
-            target_mode=TARGET_JSON_ENTITIES,
+            target_mode=TARGET.json_entities,
             source_code=YamlCode(""),
         ).execute([], TestExecutionContext())
 
     # unknown target mode
-    with pytest.raises(ValueError, match="Target mode not implemented yet"):
+    with pytest.raises(ValueError, match="Unknown target mode"):
         ParseYaml(
-            source_mode=SOURCE_CODE,
+            source_mode=SOURCE.code,
             target_mode="not-there",
             source_code=YamlCode("ttt: 123"),
         ).execute([], TestExecutionContext())
@@ -114,8 +107,8 @@ def test_code_to_json_entities() -> None:
     yaml_as_json = json.dumps(yaml_as_dict)
 
     plugin = ParseYaml(
-        source_mode=SOURCE_CODE,
-        target_mode=TARGET_JSON_ENTITIES,
+        source_mode=SOURCE.code,
+        target_mode=TARGET.json_entities,
         source_code=YamlCode(yaml_code),
     )
     entities: Entities = plugin.execute([], TestExecutionContext())
@@ -137,8 +130,8 @@ def test_entities_to_json_dataset(di_environment: dict) -> None:
     )
 
     plugin = ParseYaml(
-        source_mode=TARGET_ENTITIES,
-        target_mode=TARGET_JSON_DATASET,
+        source_mode=SOURCE.entities,
+        target_mode=TARGET.json_dataset,
         target_dataset=di_environment["dataset"],
     )
     plugin.execute(inputs=[entities], context=TestExecutionContext())
