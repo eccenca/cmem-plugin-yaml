@@ -9,6 +9,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 ...
 
 
+## [0.6.0] 2023-11-29
+
+### Added
+
+- advanced options to control input schema (type + property)
+- better error messages for cases with missing data (no entity, no value)
+
+
 ## [0.5.0] 2023-11-16
 
 ### Added
