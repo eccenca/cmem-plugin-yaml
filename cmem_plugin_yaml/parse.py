@@ -29,7 +29,7 @@ from cmem_plugin_base.dataintegration.plugins import PluginLogger, WorkflowPlugi
 from cmem_plugin_base.dataintegration.ports import (
     FixedNumberOfInputs,
     FixedSchemaPort,
-    FlexibleSchemaPort,
+    UnknownSchemaPort,
 )
 from cmem_plugin_base.dataintegration.utils import setup_cmempy_user_access
 from cmem_plugin_base.dataintegration.utils.entity_builder import build_entities_from_data
@@ -200,7 +200,7 @@ class ParseYaml(WorkflowPlugin):
         match self.target_mode:
             case TARGET.entities:
                 # output port with flexible schema
-                self.output_port = FlexibleSchemaPort()
+                self.output_port = UnknownSchemaPort()
             case TARGET.json_entities:
                 # output port with fixed schema
                 self.output_port = FixedSchemaPort(
