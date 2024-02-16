@@ -29,9 +29,10 @@ from cmem_plugin_base.dataintegration.plugins import PluginLogger, WorkflowPlugi
 from cmem_plugin_base.dataintegration.ports import (
     FixedNumberOfInputs,
     FixedSchemaPort,
-    FlexibleSchemaPort,
+    UnknownSchemaPort,
 )
 from cmem_plugin_base.dataintegration.utils import setup_cmempy_user_access
+from cmem_plugin_base.dataintegration.utils.entity_builder import build_entities_from_data
 
 SOURCE = SimpleNamespace()
 SOURCE.entities = "entities"
@@ -40,7 +41,7 @@ SOURCE.file = "file"
 SOURCE.options = OrderedDict(
     {
         SOURCE.entities: f"{SOURCE.entities}: "
-        "Content is parsed from of the input port in a workflow (default).",
+        "Content is parsed from of the input port in a workflow.",
         SOURCE.code: f"{SOURCE.code}: " "Content is parsed from the YAML code field below.",
         SOURCE.file: f"{SOURCE.file}: "
         "Content is parsed from an uploaded project file resource (see advanced options).",
@@ -54,12 +55,11 @@ TARGET.json_dataset = "json_dataset"
 TARGET.options = OrderedDict(
     {
         TARGET.json_entities: f"{TARGET.json_entities}: "
-        "Parsed structure will be sent as JSON entities to the output port (current default).",
+        "Parsed structure will be sent as JSON entities to the output port.",
         TARGET.json_dataset: f"{TARGET.json_dataset}: "
         "Parsed structure will be is saved in a JSON dataset (see advanced options).",
         TARGET.entities: f"{TARGET.entities}: "
-        "Parsed structure will be send as entities to the output port "
-        "(not implemented yet, later default).",
+        "Parsed structure will be send as entities to the output port.",
     }
 )
 
@@ -78,13 +78,14 @@ DEFAULT_YAML = YamlCode(f"# Add your YAML code here (and select '{SOURCE.code}' 
             label="Source / Input Mode",
             description="",
             param_type=ChoiceParameterType(SOURCE.options),
+            default_value=SOURCE.code,
         ),
         PluginParameter(
             name="target_mode",
             label="Target / Output Mode",
             description="",
             param_type=ChoiceParameterType(TARGET.options),
-            default_value=TARGET.json_entities,
+            default_value=TARGET.entities,
         ),
         PluginParameter(
             name="source_code",
@@ -199,7 +200,7 @@ class ParseYaml(WorkflowPlugin):
         match self.target_mode:
             case TARGET.entities:
                 # output port with flexible schema
-                self.output_port = FlexibleSchemaPort()
+                self.output_port = UnknownSchemaPort()
             case TARGET.json_entities:
                 # output port with fixed schema
                 self.output_port = FixedSchemaPort(
@@ -309,6 +310,12 @@ class ParseYaml(WorkflowPlugin):
                 operation_desc="JSON dataset replaced",
             )
         )
+
+    @staticmethod
+    def _provide_output_entities(file_json: Path) -> Entities | None:
+        """Output as entities"""
+        data = json.loads(Path.open(file_json, encoding="utf-8").read())
+        return build_entities_from_data(data=data)
 
     def _provide_output(self, file_json: Path) -> Entities | None:
         """Depending on configuration, provides the parsed content for different outputs"""

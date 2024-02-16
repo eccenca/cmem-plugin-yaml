@@ -138,3 +138,20 @@ def test_entities_to_json_dataset(di_environment: dict) -> None:
 
     with get_resource_response(di_environment["project"], di_environment["resource"]) as response:
         assert response.text == yaml_as_json
+
+
+@needs_cmem
+def test_code_to_entities() -> None:
+    """Test source to entities"""
+    with Path.open(Path(PROJECT_ROOT) / "Taskfile.yaml") as reader:
+        yaml_code = reader.read()
+    plugin = ParseYaml(
+        source_mode=SOURCE.code,
+        target_mode=TARGET.entities,
+        source_code=YamlCode(yaml_code),
+    )
+    schema_and_entities: Entities = plugin.execute([], TestExecutionContext())
+    schema = schema_and_entities.schema
+    entities = list(schema_and_entities.entities)
+    assert schema.paths[0].path == "version"  # first line was "version: "
+    assert entities[0].values[0][0] == "3"  # is treated as multi value
