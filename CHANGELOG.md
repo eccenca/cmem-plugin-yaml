@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ...
 
+## [0.7.0] 2024-02-16
+
+### Added
+
+- output as plain entities
+
 
 ## [0.6.0] 2023-11-29
 
