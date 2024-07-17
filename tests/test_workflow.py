@@ -1,4 +1,5 @@
 """Test different source and target modes"""
+
 import io
 import json
 from pathlib import Path

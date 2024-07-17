@@ -1,4 +1,5 @@
 """Load YAML to JSON dataset workflow plugin module"""
+
 import json
 from collections import OrderedDict
 from collections.abc import Sequence
