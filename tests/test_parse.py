@@ -1,4 +1,5 @@
 """test parse plugin"""
+
 import json
 from pathlib import Path
 

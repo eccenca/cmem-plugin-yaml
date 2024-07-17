@@ -1,4 +1,4 @@
-# cmem-plugin-yaml2json
+# cmem-plugin-yaml
 
 Load and parse YAML documents.
 
