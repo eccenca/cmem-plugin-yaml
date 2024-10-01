@@ -1,1 +1,1 @@
-"""yaml2json - main package"""
+"""cmem-plugin-yaml"""

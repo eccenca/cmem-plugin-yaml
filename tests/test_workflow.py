@@ -24,7 +24,7 @@ RESOURCE_NAME = "output_json"
 DATASET_TYPE = "json"
 
 
-@pytest.fixture()
+@pytest.fixture
 def di_environment() -> object:
     """Provide the DI build project incl. assets."""
     make_new_project(PROJECT_NAME)
