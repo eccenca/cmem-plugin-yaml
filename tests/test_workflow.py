@@ -2,7 +2,9 @@
 
 import io
 import json
+from collections.abc import Generator
 from pathlib import Path
+from typing import Any
 
 import pytest
 import yaml
@@ -25,7 +27,7 @@ DATASET_TYPE = "json"
 
 
 @pytest.fixture
-def di_environment() -> object:
+def di_environment() -> Generator[dict[str, str], Any, None]:
     """Provide the DI build project incl. assets."""
     make_new_project(PROJECT_NAME)
     make_new_dataset(
