@@ -23,6 +23,7 @@ includes:
   plugin:
     taskfile: .tasks-plugin.yml
     optional: true
+    flatten: true
 
 tasks:
 

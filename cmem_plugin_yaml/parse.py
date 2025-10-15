@@ -43,7 +43,7 @@ SOURCE.options = OrderedDict(
     {
         SOURCE.entities: f"{SOURCE.entities}: "
         "Content is parsed from of the input port in a workflow.",
-        SOURCE.code: f"{SOURCE.code}: " "Content is parsed from the YAML code field below.",
+        SOURCE.code: f"{SOURCE.code}: Content is parsed from the YAML code field below.",
         SOURCE.file: f"{SOURCE.file}: "
         "Content is parsed from an uploaded project file resource (see advanced options).",
     }
@@ -78,7 +78,7 @@ formats.
 
 **Input Sources:**
 - **entities**: Parse YAML from input port entities in a workflow
-- **code**: Parse YAML from directly entered source code 
+- **code**: Parse YAML from directly entered source code
 - **file**: Parse YAML from uploaded project file resources
 
 **Output Formats:**
@@ -240,8 +240,7 @@ class ParseYaml(WorkflowPlugin):
         if self.source_mode == SOURCE.file:
             if self.source_file == "":
                 self._raise_error(
-                    f"When using the source mode '{SOURCE.file}', "
-                    "you need to select a YAML file."
+                    f"When using the source mode '{SOURCE.file}', you need to select a YAML file."
                 )
             if hasattr(self, "execution_context") and not resource_exist(
                 self.project, self.source_file
@@ -256,8 +255,7 @@ class ParseYaml(WorkflowPlugin):
     def _get_input_file(self, writer: BinaryIO) -> None:
         """Get input YAML file from project file."""
         with get_resource_response(self.project, self.source_file) as response:
-            for chunk in response.iter_content(chunk_size=8192):
-                writer.write(chunk)
+            writer.writelines(response.iter_content(chunk_size=8192))
 
     def _get_input_code(self, writer: BinaryIO) -> None:
         """Get input YAML file from direct YAML code"""
