@@ -16,6 +16,7 @@ homepage = "https://github.com/eccenca/cmem-plugin-yaml"
 [tool.poetry.dependencies]# if you need to change python version here, change it also in .python-version
 python = "^3.13"
 pyyaml = "^6.0.3"
+cmem-cmempy = "^25.4.0"
 
 [tool.poetry.dependencies.cmem-plugin-base]
 version = "^4.15.0"
