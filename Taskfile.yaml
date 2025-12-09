@@ -66,7 +66,6 @@ tasks:
             | head -1 | cut -d " " -f 2 | cut -d "." -f 1-2
 
   poetry:install:
-    internal: true
     desc: Install dependencies managed by Poetry
     run: once
     deps:
@@ -108,7 +107,8 @@ tasks:
     cmds:
       - task: check:ruff
       - task: check:mypy
-      - task: check:safety
+      - task: check:deptry
+      - task: check:trivy
 
   check:pytest:
     desc: Run unit and integration tests
@@ -150,14 +150,22 @@ tasks:
     vars:
       JUNIT_FILE: ./{{.DIST_DIR}}/junit-mypy.xml
 
-  check:safety:
-    desc: Complain about vulnerabilities in dependencies
+  check:trivy:
+    desc: Scan for vulnerabilities using Trivy
     <<: *preparation
     cmds:
-      # ignore 51358 safety - dev dependency only
-      # ignore 67599 pip - dev dependency only
-      # ignore 70612 jinja2 - dev dependency only
-      - poetry run safety check -i 51358 -i 67599 -i 70612
+      - >
+        poetry run trivy fs
+        --include-dev-deps
+        --scanners vuln
+        --exit-code 1
+        .
+
+  check:deptry:
+    desc: Complain about unused or missing dependencies
+    <<: *preparation
+    cmds:
+      - poetry run deptry .
 
   check:ruff:
     desc: Complain about everything else
