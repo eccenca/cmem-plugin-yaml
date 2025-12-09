@@ -18,7 +18,7 @@ python = "^3.13"
 pyyaml = "^6.0.3"
 
 [tool.poetry.dependencies.cmem-plugin-base]
-version = "^4.14.0"
+version = "^4.15.0"
 allow-prereleases = false
 
 [tool.poetry.group.dev.dependencies.cmem-cmemc]
@@ -35,8 +35,8 @@ pytest-dotenv = "^0.5.2"
 pytest-html = "^4.1.1"
 pytest-memray = { version = "^1.8.0",  markers = "platform_system != 'Windows'" }
 ruff = "^0.13.3"
-safety = "^1.10.3"
 types-pyyaml = "^6.0.12.12"
+trivy-py-ecc = "^0.67.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
@@ -94,4 +94,3 @@ ignore = [
     "S101",    # use of assert detected
     "TRY003",  # Avoid specifying long messages outside the exception class
 ]
-
