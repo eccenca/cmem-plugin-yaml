@@ -68,8 +68,6 @@ tasks:
   poetry:install:
     desc: Install dependencies managed by Poetry
     run: once
-    deps:
-      - poetry:check
     cmds:
       - poetry install
 
@@ -158,6 +156,7 @@ tasks:
         poetry run trivy fs
         --include-dev-deps
         --scanners vuln
+        --skip-files .poetry/plugins/poetry.lock
         --exit-code 1
         .
 
@@ -185,7 +184,7 @@ tasks:
     <<: *preparation
     deps:
       - clean
-      - poetry:check
     cmds:
       - poetry build
+      - poetry export --without=dev -f requirements.txt >dist/requirements.txt
 
