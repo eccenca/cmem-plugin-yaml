@@ -8,18 +8,16 @@ from typing import Any
 
 import pytest
 import yaml
-from cmem.cmempy.workspace.projects.datasets.dataset import make_new_dataset
-from cmem.cmempy.workspace.projects.project import delete_project, make_new_project
-from cmem.cmempy.workspace.projects.resources.resource import (
-    create_resource,
-    get_resource_response,
-)
+from cmem_client.client import Client
+from cmem_client.models.dataset import Dataset, DatasetData
+from cmem_client.models.project import Project
 from cmem_plugin_base.dataintegration.entity import Entities, Entity, EntityPath, EntitySchema
 from cmem_plugin_base.dataintegration.parameter.code import YamlCode
+from cmem_plugin_base.testing import TestExecutionContext
 
 from cmem_plugin_yaml.parse import SOURCE, TARGET, ParseYaml
 from tests import PROJECT_ROOT
-from tests.utils import PROJECT_NAME, TestExecutionContext, needs_cmem
+from tests.utils import PROJECT_NAME, needs_cmem
 
 DATASET_NAME = "json_dataset"
 RESOURCE_NAME = "output_json"
@@ -27,25 +25,30 @@ DATASET_TYPE = "json"
 
 
 @pytest.fixture
-def di_environment() -> Generator[dict[str, str], Any, None]:
+def client() -> Client:
+    """Provide a Corporate Memory client."""
+    return Client.from_env()
+
+
+@pytest.fixture
+def di_environment(client: Client) -> Generator[dict[str, str], Any]:
     """Provide the DI build project incl. assets."""
-    make_new_project(PROJECT_NAME)
-    make_new_dataset(
-        project_name=PROJECT_NAME,
-        dataset_name=DATASET_NAME,
-        dataset_type=DATASET_TYPE,
-        parameters={"file": RESOURCE_NAME},
-        autoconfigure=False,
+    client.projects.create_item(Project(name=PROJECT_NAME))
+    client.datasets.create_item(
+        Dataset(
+            id=DATASET_NAME,
+            project_id=PROJECT_NAME,
+            data=DatasetData(type=DATASET_TYPE, parameters={"file": RESOURCE_NAME}),
+        )
     )
-    with io.StringIO('{"key": "value"}') as response_file:
-        create_resource(
-            project_name=PROJECT_NAME,
-            resource_name=RESOURCE_NAME,
+    with io.BytesIO(b'{"key": "value"}') as response_file:
+        client.datasets.post_file_resource(
+            project_id=PROJECT_NAME,
+            dataset_id=DATASET_NAME,
             file_resource=response_file,
-            replace=True,
         )
     yield {"project": PROJECT_NAME, "dataset": DATASET_NAME, "resource": RESOURCE_NAME}
-    delete_project(PROJECT_NAME)
+    client.projects.delete_item(PROJECT_NAME)
 
 
 @needs_cmem
@@ -120,7 +123,7 @@ def test_code_to_json_entities() -> None:
 
 
 @needs_cmem
-def test_entities_to_json_dataset(di_environment: dict) -> None:
+def test_entities_to_json_dataset(client: Client, di_environment: dict) -> None:
     """Test entities to JSON dataset"""
     with Path.open(Path(PROJECT_ROOT) / "Taskfile.yaml") as reader:
         yaml_code = reader.read()
@@ -137,10 +140,10 @@ def test_entities_to_json_dataset(di_environment: dict) -> None:
         target_mode=TARGET.json_dataset,
         target_dataset=di_environment["dataset"],
     )
-    plugin.execute(inputs=[entities], context=TestExecutionContext())
+    plugin.execute(inputs=[entities], context=TestExecutionContext(project_id=PROJECT_NAME))
 
-    with get_resource_response(di_environment["project"], di_environment["resource"]) as response:
-        assert response.text == yaml_as_json
+    resource = client.files.read(f"{di_environment['project']}:{di_environment['resource']}")
+    assert resource.decode() == yaml_as_json
 
 
 @needs_cmem
