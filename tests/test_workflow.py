@@ -27,7 +27,7 @@ DATASET_TYPE = "json"
 
 
 @pytest.fixture
-def di_environment() -> Generator[dict[str, str], Any, None]:
+def di_environment() -> Generator[dict[str, str], Any]:
     """Provide the DI build project incl. assets."""
     make_new_project(PROJECT_NAME)
     make_new_dataset(
