@@ -3,17 +3,15 @@
 import json
 from collections import OrderedDict
 from collections.abc import Sequence
+from http import HTTPStatus
 from pathlib import Path
 from tempfile import mkdtemp
 from types import SimpleNamespace
 from typing import BinaryIO
 
 import yaml
-from cmem.cmempy.workspace.projects.datasets.dataset import post_resource
-from cmem.cmempy.workspace.projects.resources.resource import (
-    get_resource_response,
-    resource_exist,
-)
+from cmem_client.client import Client
+from cmem_plugin_base.dataintegration.client import get_client
 from cmem_plugin_base.dataintegration.context import ExecutionContext, ExecutionReport
 from cmem_plugin_base.dataintegration.description import Icon, Plugin, PluginParameter
 from cmem_plugin_base.dataintegration.entity import (
@@ -32,7 +30,6 @@ from cmem_plugin_base.dataintegration.ports import (
     FixedSchemaPort,
     UnknownSchemaPort,
 )
-from cmem_plugin_base.dataintegration.utils import setup_cmempy_user_access
 from cmem_plugin_base.dataintegration.utils.entity_builder import build_entities_from_data
 
 SOURCE = SimpleNamespace()
@@ -160,6 +157,7 @@ class ParseYaml(WorkflowPlugin):
 
     inputs: Sequence[Entities]
     execution_context: ExecutionContext
+    client: Client
     project: str
     temp_dir: str
 
@@ -244,9 +242,7 @@ class ParseYaml(WorkflowPlugin):
                 self._raise_error(
                     f"When using the source mode '{SOURCE.file}', you need to select a YAML file."
                 )
-            if hasattr(self, "execution_context") and not resource_exist(
-                self.project, self.source_file
-            ):
+            if hasattr(self, "client") and not self._source_file_exists():
                 self._raise_error(f"The file '{self.source_file}' does not exist in the project.")
         if self.target_mode == TARGET.json_dataset and self.target_dataset == "":
             self._raise_error(
@@ -254,10 +250,16 @@ class ParseYaml(WorkflowPlugin):
                 "you need to select a JSON dataset."
             )
 
+    def _source_file_exists(self) -> bool:
+        """Check if the configured source file exists in the project."""
+        with self.client.datasets.get_file_resource(self.project, self.source_file) as response:
+            return bool(response.status_code == HTTPStatus.OK)
+
     def _get_input_file(self, writer: BinaryIO) -> None:
         """Get input YAML file from project file."""
-        with get_resource_response(self.project, self.source_file) as response:
-            writer.writelines(response.iter_content(chunk_size=8192))
+        with self.client.datasets.get_file_resource(self.project, self.source_file) as response:
+            response.raise_for_status()
+            writer.writelines(response.iter_bytes(chunk_size=8192))
 
     def _get_input_code(self, writer: BinaryIO) -> None:
         """Get input YAML file from direct YAML code"""
@@ -315,8 +317,8 @@ class ParseYaml(WorkflowPlugin):
 
     def _provide_output_json_dataset(self, file_json: Path) -> None:
         """Output as JSON to a dataset resource file"""
-        with Path.open(file_json, encoding="utf-8") as reader:
-            post_resource(
+        with Path.open(file_json, "rb") as reader:
+            self.client.datasets.post_file_resource(
                 project_id=self.project,
                 dataset_id=self.target_dataset,
                 file_resource=reader,
@@ -350,8 +352,8 @@ class ParseYaml(WorkflowPlugin):
         self.inputs = inputs
         self.execution_context = context
         self.project = self.execution_context.task.project_id()
+        self.client = get_client(context)
         self._validate_config()
-        setup_cmempy_user_access(context.user)
         self.temp_dir = mkdtemp()
         file_yaml = self._get_input()
         file_json = self.yaml2json(file_yaml, logger=self.log)
