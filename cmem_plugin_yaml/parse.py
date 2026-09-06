@@ -52,11 +52,11 @@ TARGET.json_entities = "json_entities"
 TARGET.json_dataset = "json_dataset"
 TARGET.options = OrderedDict(
     {
+        TARGET.entities: f"{TARGET.entities} - the structure of the document, as entities",
         TARGET.json_entities: f"{TARGET.json_entities} - one entity carrying the JSON "
         "document as text",
         TARGET.json_dataset: f"{TARGET.json_dataset} - the JSON document is written into "
         "a JSON dataset, and nothing leaves the task",
-        TARGET.entities: f"{TARGET.entities} - the structure of the document, as entities",
     }
 )
 
@@ -86,7 +86,7 @@ like any other dataset.
 Worth knowing before configuring it:
 
 - Only the first value of the first entity of the first input is parsed. Further values,
-  entities and inputs are ignored without a warning.
+  entities and inputs are ignored, each with a warning in the log.
 - The document has to describe a mapping or a sequence. A file holding nothing but a
   string or a number is rejected, since neither becomes a JSON object.
 - Exactly one document is read. A stream of several documents separated by `---` fails.
@@ -173,7 +173,9 @@ class ParseYaml(WorkflowPlugin):
 
     def __init__(  # noqa: PLR0913 PLR0917
         self,
-        source_mode: str = SOURCE.entities,
+        # The defaults repeat the default_value of the matching PluginParameter, so that a
+        # task built in Python starts out as the one the workflow editor creates.
+        source_mode: str = SOURCE.code,
         target_mode: str = TARGET.entities,
         source_code: YamlCode = DEFAULT_YAML,
         source_file: str = "",
@@ -276,7 +278,11 @@ class ParseYaml(WorkflowPlugin):
         writer.write(self.source_code.encode("utf-8"))
 
     def _get_input_entities(self, writer: BinaryIO) -> None:
-        """Get input YAML from fist path of first entity of first input"""
+        """Get input YAML from first path of first entity of first input"""
+        if len(self.inputs) > 1:
+            self.log.warning(
+                f"{len(self.inputs)} inputs are connected, and only the first one is parsed."
+            )
         try:
             first_input: Entities = self.inputs[0]
         except IndexError as error:
@@ -288,14 +294,24 @@ class ParseYaml(WorkflowPlugin):
                 "No entity available on input port. "
                 "Maybe you can re-configure the Input Schema Type / Class in Advanced Options?"
             ) from error
+        if next(first_input.entities, None) is not None:
+            self.log.warning(
+                "The input delivers more than one entity, and only the first one is parsed."
+            )
         try:
+            # next() on an entity without any value row raises StopIteration, [0] on an empty
+            # row raises IndexError - both mean there is nothing to parse.
             first_value: str = next(iter(first_entity.values))[0]
-        except IndexError as error:
+        except (StopIteration, IndexError) as error:
             raise ValueError(
                 "No value available in entity. "
                 "Maybe you can re-configure the input Input Schema Path / Property "
                 "in Advanced Options?"
             ) from error
+        if sum(len(values) for values in first_entity.values) > 1:
+            self.log.warning(
+                "The first entity carries more than one value, and only the first one is parsed."
+            )
         writer.write(first_value.encode("utf-8"))
 
     def _get_input(self) -> Path:

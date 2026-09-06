@@ -18,6 +18,19 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
       the first input is parsed, a document has to be a mapping or a sequence,
       only one document per stream is read, and writing to a JSON dataset
       replaces its entire content
+- the target mode dropdown lists **entities** first, which is the mode the task
+  starts with
+- **Parse YAML** logs a warning for each connected input, entity and value it
+  ignores, instead of dropping everything after the first one in silence
+
+### Fixed
+
+- the source mode of a task built in Python is **code**, the same mode the task
+  starts with in the workflow editor - the constructor still defaulted to
+  **entities**
+- an entity carrying no value at all now reports that no value is available,
+  and points at the Input Schema Path / Property, instead of failing with a bare
+  `StopIteration`
 
 ## [1.1.1] 2026-08-19
 

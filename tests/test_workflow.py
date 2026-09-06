@@ -103,6 +103,17 @@ def test_bad_configurations() -> None:
             source_code=YamlCode("ttt: 123"),
         ).execute([], TestExecutionContext())
 
+    # source mode 'entities' with an entity which carries no value at all
+    schema = EntitySchema(type_uri="urn:x-yaml:document", paths=[EntityPath(path="yaml-src")])
+    with pytest.raises(ValueError, match="No value available in entity"):
+        ParseYaml(
+            source_mode=SOURCE.entities,
+            target_mode=TARGET.json_entities,
+        ).execute(
+            [Entities(iter([Entity(uri="urn:x-yaml:source", values=[])]), schema=schema)],
+            TestExecutionContext(),
+        )
+
 
 @needs_cmem
 def test_code_to_json_entities() -> None:
