@@ -43,10 +43,12 @@ The number of input ports is itself a parameter. `number_of_inputs` multiplies
 whichever port the source mode declares, and `_get_input_entities()` and
 `_get_input_file()` walk `range(self.number_of_inputs)` rather than the length
 of `inputs`, so a port which was declared but left unconnected is treated as an
-empty one instead of raising an `IndexError`. The opposite case - more inputs
-connected than ports declared - reads only the declared ones, and
-`_warn_about_undeclared_inputs()` says so, because dropping a whole port in
-silence looks like a successful run.
+empty one instead of raising an `IndexError`. That is the only case which
+happens: the workflow editor offers exactly the handlers a task declares, so
+**more** inputs than ports cannot be configured.
+`_warn_about_undeclared_inputs()` guards it anyway, because the invariant
+belongs to DataIntegration rather than to this task, but it is not behaviour to
+document for users.
 
 ## Everything is a batch
 

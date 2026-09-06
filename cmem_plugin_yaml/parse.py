@@ -93,9 +93,9 @@ either as entities or as files.
 The YAML comes from one of three places: the code field of this task, entities carrying it
 as text, or files arriving on an input port. Both port modes read every entity of every
 port the task declares, so a batch of files becomes a batch of results, and the number of
-those ports is configurable, for documents which come from several tasks at once -
-connecting more tasks than the task has ports leaves the surplus unread. Configured to
-read from its code field, it declares no input port and starts the workflow. On the output
+those ports is configurable, for documents which come from several tasks at once.
+Configured to read from its code field, it declares no input port and starts the
+workflow. On the output
 side the task either hands on the structure of the documents as entities, or one JSON file
 per document.
 
@@ -329,11 +329,16 @@ class ParseYaml(WorkflowPlugin):
         return entities
 
     def _warn_about_undeclared_inputs(self, inputs: Sequence[Entities]) -> None:
-        """Warn about inputs beyond the declared ports, which are never read"""
+        """Warn about inputs beyond the declared ports, which are never read.
+
+        The workflow editor only offers the handlers a task declares, so this cannot be
+        reached by configuring a workflow - it guards an invariant DataIntegration owns
+        rather than this task, and says so rather than dropping a whole port in silence.
+        """
         if len(inputs) > self.number_of_inputs:
             self.log.warning(
-                f"{len(inputs)} inputs are connected while {self.number_of_inputs} input "
-                "port(s) are declared. Raise Number of Input Ports to read them all."
+                f"{len(inputs)} inputs were delivered while {self.number_of_inputs} input "
+                "port(s) are declared. Only the declared ones are read."
             )
 
     def _get_input_code(self, _inputs: Sequence[Entities]) -> list[Document]:

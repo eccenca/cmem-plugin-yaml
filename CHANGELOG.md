@@ -75,8 +75,6 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
   file which was never written; the warnings of the execution report carry the reason too
 - cancelling a run no longer reports that the input port delivered nothing, and no
   further files are written once it is cancelled
-- inputs beyond the declared **Number of Input Ports** are logged instead of dropped in
-  silence
 - an empty result is reported, so a tolerated empty batch is not indistinguishable from a
   task which never ran
 - the fallback file name of a single document is `parsed-yaml.json` again; it only gains a
