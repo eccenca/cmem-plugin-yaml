@@ -4,13 +4,12 @@ version: '3'
 
 tasks:
 
-  deploy:
+  install:
     desc: Install plugin package in Corporate Memory
-    deps:
-      - build
     cmds:
-      - cmemc admin workspace python install dist/*.tar.gz
-      - cmemc admin workspace python list-plugins
+      - task build
+      - poetry run cmemc admin workspace python install dist/cmem_plugin_yaml*.tar.gz
+      - poetry run cmemc admin workspace python list-plugins
 
   uninstall:
     desc: Uninstall plugin package in Corporate Memory
