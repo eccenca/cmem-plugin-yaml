@@ -1,6 +1,6 @@
 # cmem-plugin-yaml
 
-Load and parse YAML documents.
+Parse YAML documents into JSON files or entities.
 
 [![eccenca Corporate Memory][cmem-shield]][cmem-link] [![workflow](https://github.com/eccenca/cmem-plugin-yaml/actions/workflows/check.yml/badge.svg)](https://github.com/eccenca/cmem-plugin-yaml/actions) [![pypi version](https://img.shields.io/pypi/v/cmem-plugin-yaml)](https://pypi.org/project/cmem-plugin-yaml) [![license](https://img.shields.io/pypi/l/cmem-plugin-yaml)](https://pypi.org/project/cmem-plugin-yaml)
 [![poetry][poetry-shield]][poetry-link] [![ruff][ruff-shield]][ruff-link] [![mypy][mypy-shield]][mypy-link] [![copier][copier-shield]][copier] 

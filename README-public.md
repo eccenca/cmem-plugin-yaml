@@ -1,6 +1,6 @@
 # cmem-plugin-yaml
 
-Load and parse YAML documents.
+Parse YAML documents into JSON files or entities.
 
 [![eccenca Corporate Memory][cmem-shield]][cmem-link]
 

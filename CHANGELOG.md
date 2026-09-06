@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/)
 
+## [Unreleased]
+
+### Changed
+
+- the package description says what the task returns, not only what it reads:
+  *Parse YAML documents into JSON files or entities*
+
+
 ## [2.0.0] 2026-09-06
 
 ### Added
