@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
+from cmem_plugin_base.dataintegration.context import ExecutionReport, ReportContext
 from cmem_plugin_base.dataintegration.entity import Entities, Entity, EntityPath, EntitySchema
 from cmem_plugin_base.dataintegration.parameter.code import YamlCode
 from cmem_plugin_base.dataintegration.typed_entities.file import (
@@ -33,6 +34,25 @@ def file_entities(*names: str) -> Entities:
     schema = FileEntitySchema()
     entities = [schema.to_entity(LocalFile(str(Path(FIXTURE_DIR) / name))) for name in names]
     return Entities(iter(entities), schema=schema)
+
+
+class RecordingReport(ReportContext):
+    """A report context which keeps what the task reported, so a test can assert on it"""
+
+    def __init__(self) -> None:
+        self.reports: list[ExecutionReport] = []
+
+    def update(self, report: ExecutionReport) -> None:
+        """Record one report"""
+        self.reports.append(report)
+
+
+def recording_context() -> tuple[TestExecutionContext, RecordingReport]:
+    """Build an execution context which records what the task reports"""
+    context = TestExecutionContext()
+    report = RecordingReport()
+    context.report = report
+    return context, report
 
 
 def written_files(result: Entities) -> dict[str, dict | list]:
@@ -71,6 +91,34 @@ def test_bad_configurations() -> None:
             source_mode=SOURCE.file,
             target_mode=TARGET.entities,
         ).execute([file_entities("plain-list.yml")], TestExecutionContext())
+
+
+@needs_cmem
+def test_reported_counts_are_singular_for_one() -> None:
+    """Test that the reported description follows the number it describes"""
+    context, report = recording_context()
+    ParseYaml(source_mode=SOURCE.file, target_mode=TARGET.file).execute(
+        [file_entities("alice.yml")], context
+    )
+    assert [(_.entity_count, _.operation_desc) for _ in report.reports] == [
+        (1, "JSON file returned")
+    ]
+
+    context, report = recording_context()
+    ParseYaml(source_mode=SOURCE.file, target_mode=TARGET.file).execute(
+        [file_entities("alice.yml", "bob.yml")], context
+    )
+    assert [(_.entity_count, _.operation_desc) for _ in report.reports] == [
+        (1, "JSON file returned"),
+        (2, "JSON files returned"),
+    ]
+
+    context, report = recording_context()
+    ParseYaml(source_mode=SOURCE.file, target_mode=TARGET.entities).execute(
+        [file_entities("alice.yml")], context
+    )
+    assert [(_.entity_count, _.operation_desc) for _ in report.reports] == [(1, "document parsed")]
+    assert report.reports[-1].summary == [("Document parsed", "1")]
 
 
 @needs_cmem

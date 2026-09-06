@@ -49,6 +49,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
   Entity Schema of `cmem-plugin-base`, which talks to the deployment itself
 - **Parse YAML** logs a warning for an input port which delivered nothing, and for
   each document it skipped, instead of dropping input in silence
+- the execution report counts what it describes in the singular when there is one of
+  it, and says a JSON file is *returned* rather than *written*, since the task hands
+  it on rather than storing it
 
 ### Fixed
 

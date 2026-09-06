@@ -370,18 +370,19 @@ class ParseYaml(WorkflowPlugin):
             "Maybe you can re-configure the Input Schema Type / Class in Advanced Options?"
         )
 
-    def _report(self, count: int, operation: str, description: str) -> None:
-        """Report how much has been done so far"""
+    def _report(self, count: int, operation: str, singular: str, plural: str) -> None:
+        """Report how much has been done so far, counting the thing by its own name"""
+        description = singular if count == 1 else plural
+        summary = [(description[0].upper() + description[1:], str(count))]
+        if self.skipped:
+            summary.append(("Documents skipped", str(len(self.skipped))))
         self.execution_context.report.update(
             ExecutionReport(
                 entity_count=count,
                 operation=operation,
                 operation_desc=description,
                 warnings=self.skipped,
-                summary=[
-                    ("Documents parsed", str(count)),
-                    ("Documents skipped", str(len(self.skipped))),
-                ],
+                summary=summary,
             )
         )
 
@@ -405,7 +406,7 @@ class ParseYaml(WorkflowPlugin):
                 "from. A YAML list of plain values cannot become entities - use the "
                 f"'{TARGET.file}' target mode for it."
             )
-        self._report(len(documents), "read", "documents parsed")
+        self._report(len(documents), "read", "document parsed", "documents parsed")
         return entities
 
     def _unique_name(self, name: str, taken: set[str]) -> str:
@@ -441,7 +442,7 @@ class ParseYaml(WorkflowPlugin):
             path = Path(mkdtemp()) / self._unique_name(document.name or fallback, taken)
             self.write_json(document.data, path)
             files.append(LocalFile(path=str(path), mime="application/json"))
-            self._report(len(files), "write", "JSON files written")
+            self._report(len(files), "write", "JSON file returned", "JSON files returned")
         return Entities(entities=iter([schema.to_entity(_) for _ in files]), schema=schema)
 
     def _provide_output(self, documents: list[Document]) -> Entities:
