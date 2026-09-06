@@ -7,6 +7,26 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## [Unreleased]
 
+### Added
+
+- source mode **file** reads files from an input port with the File Entity Schema, and
+  target mode **file** writes one JSON file per document to the output port
+- the task can declare more than one input port, so documents can be read from several
+  tasks at once - the advanced **Number of Input Ports** parameter, read in port order
+- every entity of every connected port is parsed now, one document each, instead of only
+  the first one
+- the advanced **Tolerate Unusable Input** parameter skips a document which cannot be
+  parsed and turns an input which delivers nothing into an empty result; a batch in which
+  every document fails stays an error
+
+### Removed
+
+- the **file** source mode no longer reads a project file picked in the task - the
+  **YAML File** parameter is gone, and a file arrives on the input port instead
+- target mode **json_dataset** and its **Target Dataset** parameter - write the file
+  output to a project resource with a task which stores files
+- target mode **json_entities** - use the file output for the JSON document
+
 ### Changed
 
 - updated dependencies and template
@@ -14,14 +34,18 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
     - the source and target modes are now explained in the dropdown labels only,
       instead of being listed a second time in the task documentation
     - the documentation describes which ports exist in which mode, and names the
-      behaviour users stumble over: only the first value of the first entity of
-      the first input is parsed, a document has to be a mapping or a sequence,
-      only one document per stream is read, and writing to a JSON dataset
-      replaces its entire content
+      behaviour users stumble over: a document has to be a mapping or a sequence,
+      only one document per file is read, and documents leaving as entities share
+      one unioned schema
 - the target mode dropdown lists **entities** first, which is the mode the task
   starts with
-- **Parse YAML** logs a warning for each connected input, entity and value it
-  ignores, instead of dropping everything after the first one in silence
+- documents leaving as entities are combined into one stream whose paths are the union of
+  all of them, and a value a document does not carry becomes empty
+- a written file is named after the file it came from, with a `.json` suffix
+- `cmem-client` is no longer a dependency of this package: files are read through the File
+  Entity Schema of `cmem-plugin-base`, which talks to the deployment itself
+- **Parse YAML** logs a warning for an input port which delivered nothing, and for
+  each document it skipped, instead of dropping input in silence
 
 ### Fixed
 
@@ -31,6 +55,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 - an entity carrying no value at all now reports that no value is available,
   and points at the Input Schema Path / Property, instead of failing with a bare
   `StopIteration`
+- a YAML document holding a list of plain values no longer produces an empty result while
+  declaring an output port - it reports that there is nothing to build entities from
 
 ## [1.1.1] 2026-08-19
 
