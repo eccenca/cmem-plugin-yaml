@@ -55,6 +55,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ### Fixed
 
+- two documents which disagree about a key - a string in one, a list in the next - now
+  carry it as text in both. The entity builder used to let the last document decide, which
+  re-read the string one character per value, or failed outright when a list met a mapping
+- a key which is not a string is given its string form, so it survives into JSON and into
+  an entity path; two keys which become the same string are refused rather than one of
+  them being lost
 - a document holding a value JSON has no type for - a plain `1990-01-02` is a date, not
   a string - no longer aborts the whole batch with an unreported error; it is written as
   its string form, which is what the entities output already did with it

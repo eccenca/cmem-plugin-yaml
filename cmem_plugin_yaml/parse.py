@@ -110,7 +110,11 @@ Worth knowing before configuring it:
   fails.
 - Parsing is safe, so YAML tags that construct arbitrary Python objects are refused.
 - Documents leaving as entities are combined into one stream whose paths are the union of
-  all of them, and a value a document does not carry becomes empty.
+  all of them, and a value a document does not carry becomes empty. Where two documents
+  disagree about a key - a string in one, a list in the next - the key is carried as text
+  in both, since one schema cannot hold it both ways.
+- A key which is not a string becomes one. Mind that `on`, `yes` and `no` are booleans in
+  YAML, so `on:` reads back as `True` unless it is quoted in the source document.
 - A returned file is named after the file it came from, with a `.json` suffix, made
   unique when two of them would otherwise share a name.
 """,
@@ -312,7 +316,7 @@ class ParseYaml(WorkflowPlugin):
         """
         try:
             return Document(data=self.parse_yaml(source), name=name)
-        except (yaml.YAMLError, TypeError, UnicodeDecodeError) as error:
+        except (yaml.YAMLError, TypeError, ValueError) as error:
             self._skip_or_raise(f"{label} could not be parsed: {error}")
             return None
 
@@ -458,6 +462,8 @@ class ParseYaml(WorkflowPlugin):
                 "from. A YAML list of plain values cannot become entities - use the "
                 f"'{TARGET.file}' target mode for it."
             )
+        if isinstance(data, list):
+            data = self._coerce_conflicting_values(data)
         entities = build_entities_from_data(data)
         if entities is None:
             self._raise_error(
@@ -527,15 +533,88 @@ class ParseYaml(WorkflowPlugin):
         return self._provide_output(self._get_input(inputs))
 
     @staticmethod
-    def parse_yaml(source: IO[bytes] | str) -> dict | list:
+    def _as_text(value: object) -> str:
+        """Render a value the way a document which disagreed about it would read"""
+        if isinstance(value, dict | list):
+            return json.dumps(value, default=str)
+        return str(value)
+
+    @staticmethod
+    def _shape(value: object) -> str:
+        """Name the shape a value has, as far as one entity schema is concerned"""
+        if isinstance(value, dict):
+            return "mapping"
+        if isinstance(value, list):
+            return "list"
+        return "value"
+
+    @classmethod
+    def _shapes(cls, documents: list) -> dict[str, set[str]]:
+        """Collect the shapes each key takes across a list of mappings"""
+        shapes: dict[str, set[str]] = {}
+        for document in documents:
+            for key, value in document.items():
+                shapes.setdefault(str(key), set()).add(cls._shape(value))
+        return shapes
+
+    @classmethod
+    def _coerce_conflicting_values(cls, documents: list) -> list:
+        """Render a key as text in every document as soon as they disagree about its shape.
+
+        Entities carry one schema for all of them, so a key which is a string in one
+        document and a list in the next has to be one or the other. Left alone, the entity
+        builder lets the last document decide and re-reads the string one character per
+        value; as text, both documents keep what they said.
+        """
+        if not all(isinstance(_, dict) for _ in documents):
+            return documents
+        coerced = [dict(_) for _ in documents]
+        for key, found in cls._shapes(coerced).items():
+            carrying = [_ for _ in coerced if key in _]
+            if len(found) > 1:
+                for document in carrying:
+                    document[key] = cls._as_text(document[key])
+            elif found == {"mapping"}:
+                nested = cls._coerce_conflicting_values([_[key] for _ in carrying])
+                for document, value in zip(carrying, nested, strict=True):
+                    document[key] = value
+        return coerced
+
+    @classmethod
+    def _stringify_keys(cls, value: object) -> object:
+        """Give every mapping key its string form, so that JSON and entities can carry it.
+
+        YAML keys are not necessarily strings: `on:` is the boolean True under YAML 1.1,
+        `80:` is an integer and `2026-01-01:` is a date. JSON has string keys only and an
+        EntityPath is a string, so the type is dropped here rather than by whoever writes
+        the value out - quote such a key in the source document to keep it as it reads.
+        """
+        if isinstance(value, dict):
+            stringified: dict[str, object] = {}
+            for key, item in value.items():
+                text = str(key)
+                if text in stringified:
+                    raise ValueError(
+                        f"the key '{text}' appears twice once its YAML type is dropped, "
+                        "so one of the two values would be lost"
+                    )
+                stringified[text] = cls._stringify_keys(item)
+            return stringified
+        if isinstance(value, list):
+            return [cls._stringify_keys(_) for _ in value]
+        return value
+
+    @classmethod
+    def parse_yaml(cls, source: IO[bytes] | str) -> dict | list:
         """Parse a YAML document from a stream or a string.
 
         Raises:
             TypeError: when the document is neither a mapping nor a sequence
+            ValueError: when two keys collide once their YAML type is dropped
             yaml.YAMLError: when the document is not valid YAML
 
         """
-        content = yaml.safe_load(source)
+        content = cls._stringify_keys(yaml.safe_load(source))
         if not isinstance(content, dict | list):
             raise TypeError("YAML content could not be parsed to a dict or list.")
         return content

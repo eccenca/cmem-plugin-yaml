@@ -65,7 +65,12 @@ collection - but raises `AttributeError` from deep inside itself when only
 later document decide the type of a key an earlier one already used, so a
 string meeting a list is re-read one character per value.
 `_provide_output_entities()` therefore checks the items itself before calling
-the builder, rather than relying on the `None`.
+the builder, rather than relying on the `None`, and runs
+`_coerce_conflicting_values()` first: as soon as two documents disagree about a
+key's shape, that key is rendered as text in all of them, which is the only way
+one schema can carry both. Keys are stringified even earlier, in `parse_yaml()`,
+because neither JSON nor an `EntityPath` can hold the boolean YAML 1.1 makes of
+`on:`.
 
 ## Files are read through cmem-plugin-base, never with a client of our own
 

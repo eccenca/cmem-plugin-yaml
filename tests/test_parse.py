@@ -94,3 +94,22 @@ def test_bad_configuration_is_refused_without_a_deployment() -> None:
         ParseYaml(source_mode="not-there")
     with pytest.raises(ValueError, match="Unknown target mode"):
         ParseYaml(target_mode="not-there")
+
+
+def test_keys_are_given_their_string_form() -> None:
+    """Test that a YAML key which is not a string becomes one"""
+    # `on` is the boolean True under YAML 1.1, which is why a workflow file needs care
+    assert ParseYaml.parse_yaml("name: CI\non:\n  push: 1") == {
+        "name": "CI",
+        "True": {"push": 1},
+    }
+    assert ParseYaml.parse_yaml("2026-01-01: released") == {"2026-01-01": "released"}
+    assert ParseYaml.parse_yaml("80: http") == {"80": "http"}
+    # quoting the key in the source keeps it as it reads
+    assert ParseYaml.parse_yaml('"on": push') == {"on": "push"}
+
+
+def test_keys_which_collide_once_stringified_are_refused() -> None:
+    """Test that two keys which become the same string are an error, not a lost value"""
+    with pytest.raises(ValueError, match="appears twice"):
+        ParseYaml.parse_yaml('80: http\n"80": text')

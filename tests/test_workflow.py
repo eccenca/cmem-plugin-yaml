@@ -364,3 +364,18 @@ def test_cancelling_does_not_look_like_a_broken_input() -> None:
         [file_entities("alice.yml", "bob.yml")], context
     )
     assert written_files(result) == {}
+
+
+@needs_cmem
+def test_documents_disagreeing_about_a_key_keep_their_values() -> None:
+    """Test that a string meeting a list is carried as text rather than split up"""
+    result = ParseYaml(source_mode=SOURCE.file, target_mode=TARGET.entities).execute(
+        [file_entities("args-string.yml", "args-list.yml")], TestExecutionContext()
+    )
+    values = [_.values for _ in result.entities]
+    assert [_.path for _ in result.schema.paths] == ["service", "args"]
+    # the string stays one value instead of becoming nine single characters
+    assert values == [
+        [["web"], ["--verbose"]],
+        [["api"], ['["--verbose", "--debug"]']],
+    ]
