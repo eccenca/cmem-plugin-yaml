@@ -58,9 +58,14 @@ return:
   which unions the paths across them and pads a missing value with `""`.
   Documents which are themselves lists are flattened into that collection.
 
-`build_entities_from_data` returns `None` rather than raising when there is
-nothing to build entities from - a list of plain values, or an empty
-collection. `_provide_output_entities()` has to check for it.
+`build_entities_from_data` reads every item of a list as a mapping. It returns
+`None` when *none* of them is one - a list of plain values, or an empty
+collection - but raises `AttributeError` from deep inside itself when only
+*some* are, which batching several documents made reachable. It also lets a
+later document decide the type of a key an earlier one already used, so a
+string meeting a list is re-read one character per value.
+`_provide_output_entities()` therefore checks the items itself before calling
+the builder, rather than relying on the `None`.
 
 ## Files are read through cmem-plugin-base, never with a client of our own
 
@@ -83,7 +88,9 @@ via `with_suffix`. Documents which came from the code field or from an entity
 value have no name of their own and fall back to `FALLBACK_NAME`, numbered when
 there is more than one. `Document.name` carries `None` for exactly that case.
 
-Names are then made unique across the whole run by `_unique_name()`, which
+All documents of one run share a single `mkdtemp()`, since `_unique_name()`
+already guarantees their names differ; a directory per document would leak one
+per file. Names are then made unique across the whole run by `_unique_name()`, which
 appends `-2`, `-3` and so on before the suffix. This is not about the file
 system - every file gets its own `mkdtemp()` - but about what happens after the
 task: a task which stores what this one returns names the resource after the
@@ -94,8 +101,18 @@ resources called `alice.json`, the second overwriting the first.
 
 `_raise_error()` reaches the user twice, as an `ExecutionReport` error and as a
 `ValueError`. Use it for anything a workflow author can fix by reconfiguring,
-and write the message as an instruction ("you need to select a YAML file"),
-which is the phrasing the existing messages and the tests both assume.
+and write the message as an instruction ("you need to enter or paste YAML Source
+Code in the code field"), which is the phrasing the existing messages and the
+tests both assume. It reports under the terms of whatever `_report()` last
+published, so a failure does not reset a count which was genuinely reached.
+
+What goes into `skipped` is the **whole message**, not the name of the thing.
+That list is handed to `ExecutionReport.warnings`, and a bare list of file names
+would not tell a workflow author whether the cause was bad YAML, an unreadable
+file or a bare scalar. For the same reason `_parse_document()` takes a *label*
+as well as a *name*: the label is the file the document arrived in, the name is
+what a written file would be called, and reporting the second one names a file
+which does not exist.
 
 `tolerate_unusable_input` changes what happens to an unusable document, and the
 rule has one exception which is easy to lose:
@@ -105,6 +122,11 @@ rule has one exception which is easy to lose:
 - on, but *every* document failed: still an error. Something arrived and none of
   it could be used, which is a different situation from nothing arriving.
 - an input which delivers nothing: an error when off, an empty result when on.
+
+Cancellation is deliberately **not** one of these cases. A canceled read returns
+fewer documents, which looks exactly like an empty input, so `_canceled()`
+records that it happened and `_get_input()` returns quietly instead of telling
+someone who pressed Cancel that their input port is misconfigured.
 
 ## `parse_yaml` and `write_json` are deliberately staticmethods
 

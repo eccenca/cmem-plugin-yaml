@@ -55,6 +55,27 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ### Fixed
 
+- a document holding a value JSON has no type for - a plain `1990-01-02` is a date, not
+  a string - no longer aborts the whole batch with an unreported error; it is written as
+  its string form, which is what the entities output already did with it
+- a batch mixing a mapping and a list of plain values reports what is wrong instead of
+  failing deep inside the entity builder
+- a compressed file is decompressed on the way in, instead of being reported as invalid
+  YAML
+- a file which cannot be read reports and skips for the reasons which actually occur - a
+  corrupt archive and an error from the deployment are not `OSError` - and a malformed
+  file entity no longer bypasses **Tolerate Unusable Input**
+- a skipped document names the file it came from and why, rather than the name of a JSON
+  file which was never written; the warnings of the execution report carry the reason too
+- cancelling a run no longer reports that the input port delivered nothing, and no
+  further files are written once it is cancelled
+- inputs beyond the declared **Number of Input Ports** are logged instead of dropped in
+  silence
+- an empty result is reported, so a tolerated empty batch is not indistinguishable from a
+  task which never ran
+- the fallback file name of a single document is `parsed-yaml.json` again; it only gains a
+  number when another document would take the same name
+- all documents of a run share one temporary directory instead of one each
 - the source mode of a task built in Python is **code**, the same mode the task
   starts with in the workflow editor - the constructor still defaulted to
   **entities**

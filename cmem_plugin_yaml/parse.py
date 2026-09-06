@@ -1,6 +1,7 @@
 """Parse YAML documents into JSON workflow plugin module"""
 
 import json
+import zipfile
 from collections import OrderedDict
 from collections.abc import Sequence
 from contextlib import suppress
@@ -183,6 +184,8 @@ class ParseYaml(WorkflowPlugin):
 
     execution_context: ExecutionContext
     skipped: list[str]
+    reported: tuple[int, str]
+    canceled: bool
 
     def __init__(  # noqa: PLR0913 PLR0917
         self,
@@ -204,16 +207,21 @@ class ParseYaml(WorkflowPlugin):
         self.input_schema_path = input_schema_path
         self.input_schema_type = input_schema_type
         self.skipped = []
+        self.reported = (0, "documents parsed")
+        self.canceled = False
         self._validate_config()
         self._set_ports()
 
     def _raise_error(self, message: str) -> NoReturn:
         """Send a report and raise an error"""
         if hasattr(self, "execution_context"):
+            # keep the terms of whatever the run last reported, so the failure does not
+            # reset a count which was reached, nor rename the step which reached it
+            count, description = self.reported
             self.execution_context.report.update(
                 ExecutionReport(
-                    entity_count=0,
-                    operation_desc="documents parsed",
+                    entity_count=count,
+                    operation_desc=description,
                     warnings=self.skipped,
                     error=message,
                 )
@@ -268,26 +276,44 @@ class ParseYaml(WorkflowPlugin):
         )
 
     def _canceled(self) -> bool:
-        """Check whether the workflow is being canceled"""
+        """Check whether the workflow is being canceled, and remember that it was.
+
+        The answer is remembered because a canceled read is indistinguishable from an
+        empty one by its result: both return no documents, and only this flag keeps the
+        task from telling a user who pressed Cancel that their input port is misconfigured.
+        """
         with suppress(AttributeError):
             # context.workflow is absent in some contexts, notably the test contexts
-            return bool(self.execution_context.workflow.status() == "Canceling")
-        return False
+            if self.execution_context.workflow.status() == "Canceling":
+                self.canceled = True
+        return self.canceled
 
-    def _skip_or_raise(self, name: str, reason: str) -> None:
-        """Skip an unusable document, or stop the task over it"""
-        message = f"{name} {reason}"
+    def _skip_or_raise(self, message: str) -> None:
+        """Skip an unusable document, or stop the task over it.
+
+        The whole message is what is kept, not just the name of the thing: it ends up in
+        ExecutionReport.warnings, where a bare list of file names would not tell a workflow
+        author whether the cause was bad YAML, an unreadable file or a bare scalar.
+        """
         if not self.tolerate_unusable_input:
             self._raise_error(message)
         self.log.warning(f"{message} - skipped.")
-        self.skipped.append(name)
+        self.skipped.append(message)
 
-    def _parse_document(self, source: IO[bytes] | str, name: str | None) -> Document | None:
-        """Parse one document, skipping it when it is unusable and that is tolerated"""
+    def _parse_document(
+        self, source: IO[bytes] | str, label: str, name: str | None
+    ) -> Document | None:
+        """Parse one document, skipping it when it is unusable and that is tolerated.
+
+        The label names the document as it arrived - the file it was read from, or the
+        entity it came out of - while the name is what a written file would be called.
+        They are not the same string, and reporting the second one names a file which
+        does not exist.
+        """
         try:
             return Document(data=self.parse_yaml(source), name=name)
         except (yaml.YAMLError, TypeError, UnicodeDecodeError) as error:
-            self._skip_or_raise(name or "The YAML source code", f"could not be parsed: {error}")
+            self._skip_or_raise(f"{label} could not be parsed: {error}")
             return None
 
     def _port_entities(self, inputs: Sequence[Entities], index: int) -> list[Entity]:
@@ -297,28 +323,37 @@ class ParseYaml(WorkflowPlugin):
             self.log.warning(f"Input port {index + 1} delivered no entities.")
         return entities
 
+    def _warn_about_undeclared_inputs(self, inputs: Sequence[Entities]) -> None:
+        """Warn about inputs beyond the declared ports, which are never read"""
+        if len(inputs) > self.number_of_inputs:
+            self.log.warning(
+                f"{len(inputs)} inputs are connected while {self.number_of_inputs} input "
+                "port(s) are declared. Raise Number of Input Ports to read them all."
+            )
+
     def _get_input_code(self, _inputs: Sequence[Entities]) -> list[Document]:
         """Get the document from the YAML code field"""
-        document = self._parse_document(self.source_code, name=None)
+        document = self._parse_document(self.source_code, "The YAML source code", None)
         return [document] if document else []
 
     def _get_input_entities(self, inputs: Sequence[Entities]) -> list[Document]:
         """Get one document per entity, read from the configured input path"""
         documents: list[Document] = []
+        self._warn_about_undeclared_inputs(inputs)
         for index in range(self.number_of_inputs):
             for number, entity in enumerate(self._port_entities(inputs, index), start=1):
                 if self._canceled():
                     return documents
+                label = f"Entity {number} of input port {index + 1}"
                 try:
                     text: str = next(iter(entity.values))[0]
                 except (StopIteration, IndexError):
                     self._skip_or_raise(
-                        f"Entity {number} of input port {index + 1}",
-                        "carries no value. Maybe you can re-configure the Input Schema "
-                        "Path / Property in Advanced Options?",
+                        f"{label} carries no value. Maybe you can re-configure the Input "
+                        "Schema Path / Property in Advanced Options?"
                     )
                     continue
-                if document := self._parse_document(text, name=None):
+                if document := self._parse_document(text, label, None):
                     documents.append(document)
         return documents
 
@@ -326,21 +361,29 @@ class ParseYaml(WorkflowPlugin):
         """Get one document per file arriving on an input port"""
         documents: list[Document] = []
         schema = FileEntitySchema()
+        self._warn_about_undeclared_inputs(inputs)
         for index in range(self.number_of_inputs):
             for entity in self._port_entities(inputs, index):
                 if self._canceled():
                     return documents
-                file: File = schema.from_entity(entity)
-                name = Path(file.path).with_suffix(".json").name
                 try:
-                    # the context is what makes this read with cmem-client; without it, a
-                    # project file would be read with the deprecated cmempy
-                    with file.read_stream(context=self.execution_context) as stream:
-                        document = self._parse_document(stream, name=name)
-                except OSError as error:
-                    self._skip_or_raise(file.path, f"could not be read: {error}")
+                    file: File = schema.from_entity(entity)
+                    name = Path(file.path).with_suffix(".json").name
+                except (ValueError, IndexError) as error:
+                    self._skip_or_raise(
+                        f"A file entity on input port {index + 1} is malformed: {error}"
+                    )
                     continue
-                if document:
+                try:
+                    # text_stream rather than read_stream, because it decompresses a
+                    # gzipped file on the way; the context is what keeps the read on
+                    # cmem-client rather than the deprecated cmempy
+                    with file.text_stream(context=self.execution_context) as stream:
+                        content = stream.read()
+                except (OSError, ValueError, zipfile.BadZipFile) as error:
+                    self._skip_or_raise(f"{file.path} could not be read: {error}")
+                    continue
+                if document := self._parse_document(content, file.path, name):
                     documents.append(document)
         return documents
 
@@ -352,10 +395,15 @@ class ParseYaml(WorkflowPlugin):
         except AttributeError as error:
             raise ValueError(f"Source mode not implemented yet: '{self.source_mode}'") from error
         documents: list[Document] = get_input(inputs)
+        if self.canceled:
+            self.log.info("Canceled - returning what had been read.")
+            return documents
         if not documents and self.skipped:
+            shown = "; ".join(self.skipped[:3])
+            more = len(self.skipped) - 3
             self._raise_error(
-                f"All {len(self.skipped)} documents failed to parse "
-                f"({', '.join(self.skipped[:3])})."
+                f"None of the {len(self.skipped)} documents could be used: {shown}"
+                + (f"; and {more} more." if more > 0 else ".")
             )
         if not documents and not self.tolerate_unusable_input:
             self._raise_error(self._nothing_arrived_message())
@@ -373,6 +421,7 @@ class ParseYaml(WorkflowPlugin):
     def _report(self, count: int, operation: str, singular: str, plural: str) -> None:
         """Report how much has been done so far, counting the thing by its own name"""
         description = singular if count == 1 else plural
+        self.reported = (count, description)
         summary = [(description[0].upper() + description[1:], str(count))]
         if self.skipped:
             summary.append(("Documents skipped", str(len(self.skipped))))
@@ -389,6 +438,7 @@ class ParseYaml(WorkflowPlugin):
     def _provide_output_entities(self, documents: list[Document]) -> Entities:
         """Output the structure of the documents as entities"""
         if not documents:
+            self._report(0, "read", "document parsed", "documents parsed")
             return Entities(entities=iter([]), schema=EntitySchema(type_uri="", paths=[]))
         data: dict | list = (
             documents[0].data
@@ -399,6 +449,15 @@ class ParseYaml(WorkflowPlugin):
                 for item in (document.data if isinstance(document.data, list) else [document.data])
             ]
         )
+        # build_entities_from_data reads every item of a list as a mapping. It returns
+        # None when none of them is one, but raises deep inside itself when only some are,
+        # which batching several documents made reachable - so check before calling it.
+        if isinstance(data, list) and not all(isinstance(_, dict) for _ in data):
+            self._raise_error(
+                "Not every document is a mapping, so there is nothing to build entities "
+                "from. A YAML list of plain values cannot become entities - use the "
+                f"'{TARGET.file}' target mode for it."
+            )
         entities = build_entities_from_data(data)
         if entities is None:
             self._raise_error(
@@ -433,13 +492,16 @@ class ParseYaml(WorkflowPlugin):
         schema = FileEntitySchema()
         files: list[File] = []
         taken: set[str] = set()
-        for index, document in enumerate(documents, start=1):
-            fallback = (
-                f"{FALLBACK_NAME}-{index}.json" if len(documents) > 1 else f"{FALLBACK_NAME}.json"
-            )
-            # each file gets its own directory, so that two documents of the same name
-            # cannot overwrite one another on disk either
-            path = Path(mkdtemp()) / self._unique_name(document.name or fallback, taken)
+        if not documents:
+            self._report(0, "write", "JSON file returned", "JSON files returned")
+            return Entities(entities=iter([]), schema=schema)
+        # one directory for the whole run: _unique_name already guarantees the names in it
+        # are distinct, and a directory per document would leak one per file
+        directory = Path(mkdtemp())
+        for document in documents:
+            if self._canceled():
+                break
+            path = directory / self._unique_name(document.name or f"{FALLBACK_NAME}.json", taken)
             self.write_json(document.data, path)
             files.append(LocalFile(path=str(path), mime="application/json"))
             self._report(len(files), "write", "JSON file returned", "JSON files returned")
@@ -460,7 +522,8 @@ class ParseYaml(WorkflowPlugin):
         self.log.info("start execution")
         self.execution_context = context
         self.skipped = []
-        self._validate_config()
+        self.reported = (0, "documents parsed")
+        self.canceled = False
         return self._provide_output(self._get_input(inputs))
 
     @staticmethod
@@ -479,7 +542,13 @@ class ParseYaml(WorkflowPlugin):
 
     @staticmethod
     def write_json(data: dict | list, path: Path) -> Path:
-        """Write a parsed document to a JSON file and return its path"""
+        """Write a parsed document to a JSON file and return its path.
+
+        YAML carries types JSON does not have - a plain `1990-01-02` is a date, not a
+        string - so anything json cannot serialise is written as its string form. That is
+        what the entities output does with the same value, and without it a single dated
+        document would abort a whole batch.
+        """
         with path.open("w", encoding="utf-8") as writer:
-            json.dump(data, writer)
+            json.dump(data, writer, default=str)
         return path

@@ -1,5 +1,6 @@
 """Test different source and target modes"""
 
+import gzip
 import json
 from pathlib import Path
 
@@ -53,6 +54,12 @@ def recording_context() -> tuple[TestExecutionContext, RecordingReport]:
     report = RecordingReport()
     context.report = report
     return context, report
+
+
+def local_file_entities(*paths: Path) -> Entities:
+    """Build an input carrying arbitrary local files as file entities"""
+    schema = FileEntitySchema()
+    return Entities(iter([schema.to_entity(LocalFile(str(_))) for _ in paths]), schema=schema)
 
 
 def written_files(result: Entities) -> dict[str, dict | list]:
@@ -183,7 +190,7 @@ def test_entities_source_reads_every_entity() -> None:
         target_mode=TARGET.file,
     ).execute([yaml_entities("name: alice", "name: bob")], TestExecutionContext())
     assert written_files(result) == {
-        "parsed-yaml-1.json": {"name": "alice"},
+        "parsed-yaml.json": {"name": "alice"},
         "parsed-yaml-2.json": {"name": "bob"},
     }
 
@@ -196,7 +203,8 @@ def test_several_input_ports_are_read_in_order() -> None:
         target_mode=TARGET.file,
         number_of_inputs=2,
     )
-    assert len(plugin.input_ports.ports) == 2  # noqa: PLR2004
+    declared_ports = 2
+    assert len(plugin.input_ports.ports) == declared_ports
     result = plugin.execute(
         [file_entities("alice.yml"), file_entities("bob.yml")], TestExecutionContext()
     )
@@ -253,7 +261,7 @@ def test_tolerate_unusable_input() -> None:
 @needs_cmem
 def test_a_batch_which_fails_completely_is_an_error() -> None:
     """Test that tolerating unusable input still fails when nothing survives"""
-    with pytest.raises(ValueError, match="All 1 documents failed to parse"):
+    with pytest.raises(ValueError, match="None of the 1 documents could be used"):
         ParseYaml(
             source_mode=SOURCE.file,
             target_mode=TARGET.file,
@@ -272,3 +280,87 @@ def test_unknown_modes_are_reported() -> None:
     plugin.target_mode = "not-there"
     with pytest.raises(ValueError, match="Target mode not implemented yet"):
         plugin.execute([], TestExecutionContext())
+
+
+@needs_cmem
+def test_yaml_types_json_does_not_have_are_written_as_text() -> None:
+    """Test that a date value does not abort the batch on the way out"""
+    result = ParseYaml(
+        source_mode=SOURCE.code,
+        target_mode=TARGET.file,
+        source_code=YamlCode("name: alice\nborn: 1990-01-02"),
+    ).execute([], TestExecutionContext())
+    assert written_files(result) == {"parsed-yaml.json": {"name": "alice", "born": "1990-01-02"}}
+
+
+@needs_cmem
+def test_a_batch_of_mappings_and_plain_values_is_reported() -> None:
+    """Test that mixing a mapping and plain values reports instead of failing inside the builder"""
+    with pytest.raises(ValueError, match="Not every document is a mapping"):
+        ParseYaml(source_mode=SOURCE.file, target_mode=TARGET.entities).execute(
+            [file_entities("alice.yml", "plain-list.yml")], TestExecutionContext()
+        )
+
+
+@needs_cmem
+def test_a_gzipped_file_is_read(tmp_path: Path) -> None:
+    """Test that a compressed file is decompressed rather than reported as broken YAML"""
+    path = tmp_path / "conf.yml.gz"
+    with gzip.open(path, "wt", encoding="utf-8") as writer:
+        writer.write("name: alice")
+    result = ParseYaml(source_mode=SOURCE.file, target_mode=TARGET.file).execute(
+        [local_file_entities(path)], TestExecutionContext()
+    )
+    assert written_files(result) == {"conf.yml.json": {"name": "alice"}}
+
+
+@needs_cmem
+def test_a_skipped_document_is_named_and_explained() -> None:
+    """Test that a skipped document names the file it came from, with the reason"""
+    context, report = recording_context()
+    plugin = ParseYaml(
+        source_mode=SOURCE.file,
+        target_mode=TARGET.file,
+        tolerate_unusable_input=True,
+    )
+    plugin.execute([file_entities("alice.yml", "broken.yml")], context)
+    assert len(plugin.skipped) == 1
+    # the input file, not the JSON name it would have been given
+    assert "broken.yml" in plugin.skipped[0]
+    assert "broken.json" not in plugin.skipped[0]
+    assert "could not be parsed" in plugin.skipped[0]
+    assert report.reports[-1].warnings == plugin.skipped
+
+
+@needs_cmem
+def test_a_tolerated_empty_batch_still_reports() -> None:
+    """Test that an empty result is reported rather than leaving the task blank"""
+    for target in (TARGET.file, TARGET.entities):
+        context, report = recording_context()
+        ParseYaml(
+            source_mode=SOURCE.file,
+            target_mode=target,
+            tolerate_unusable_input=True,
+        ).execute([file_entities()], context)
+        assert [(_.entity_count, _.operation_desc) for _ in report.reports] == [
+            (0, "JSON files returned" if target == TARGET.file else "documents parsed")
+        ]
+
+
+class CancelingWorkflow:
+    """A workflow context which reports that the run is being canceled"""
+
+    def status(self) -> str:
+        """Report the canceling status"""
+        return "Canceling"
+
+
+@needs_cmem
+def test_cancelling_does_not_look_like_a_broken_input() -> None:
+    """Test that a canceled run returns quietly instead of blaming the input port"""
+    context = TestExecutionContext()
+    context.workflow = CancelingWorkflow()  # type: ignore[assignment]
+    result = ParseYaml(source_mode=SOURCE.file, target_mode=TARGET.file).execute(
+        [file_entities("alice.yml", "bob.yml")], context
+    )
+    assert written_files(result) == {}
