@@ -55,6 +55,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ### Fixed
 
+- a file read out of an archive is named after the entry rather than after the archive,
+  so several entries of one archive no longer collapse onto a single name and get
+  disambiguated with a number
+- a task saved with the **json_dataset** or **json_entities** target mode is told that the
+  mode was removed and what to use instead, rather than only that it is unknown
 - two documents which disagree about a key - a string in one, a list in the next - now
   carry it as text in both. The entity builder used to let the last document decide, which
   re-read the string one character per value, or failed outright when a list met a mapping

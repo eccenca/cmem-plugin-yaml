@@ -66,6 +66,15 @@ DEFAULT_YAML = YamlCode(f"# Add your YAML code here (and select '{SOURCE.code}' 
 # its own - the code field, or an entity carrying YAML as text.
 FALLBACK_NAME = "parsed-yaml"
 
+# Target modes which existed until 2.0.0. A task configured before the upgrade still names
+# one of them, and "Unknown target mode" reads like a typo rather than a removal.
+REMOVED_TARGETS = {
+    "json_dataset": f"It was removed in 2.0.0: use the '{TARGET.file}' target mode and a "
+    "task which stores project resources.",
+    "json_entities": f"It was removed in 2.0.0: use the '{TARGET.file}' target mode, which "
+    "returns the JSON document as a file.",
+}
+
 
 @dataclass
 class Document:
@@ -116,8 +125,9 @@ Worth knowing before configuring it:
   in both, since one schema cannot hold it both ways.
 - A key which is not a string becomes one. Mind that `on`, `yes` and `no` are booleans in
   YAML, so `on:` reads back as `True` unless it is quoted in the source document.
-- A returned file is named after the file it came from, with a `.json` suffix, made
-  unique when two of them would otherwise share a name.
+- A returned file is named after the file it came from - after the entry, when that file
+  is an entry in an archive - with a `.json` suffix, made unique when two of them would
+  otherwise share a name.
 """,
     parameters=[
         PluginParameter(
@@ -261,7 +271,7 @@ class ParseYaml(WorkflowPlugin):
                     ]
                 )
             case _:
-                raise ValueError(f"Unknown source mode: {self.source_mode}")
+                self._raise_error(f"Unknown source mode: '{self.source_mode}'.")
         match self.target_mode:
             case TARGET.entities:
                 # the schema follows the documents, so it is not known before they are read
@@ -269,7 +279,8 @@ class ParseYaml(WorkflowPlugin):
             case TARGET.file:
                 self.output_port = FixedSchemaPort(schema=FileEntitySchema())
             case _:
-                raise ValueError(f"Unknown target mode: {self.target_mode}")
+                removed = REMOVED_TARGETS.get(self.target_mode, "")
+                self._raise_error(f"Unknown target mode: '{self.target_mode}'. {removed}".strip())
 
     def _entities_port(self) -> Port:
         """Build an input port for the YAML-as-text source mode"""
@@ -378,7 +389,9 @@ class ParseYaml(WorkflowPlugin):
                     return documents
                 try:
                     file: File = schema.from_entity(entity)
-                    name = Path(file.path).with_suffix(".json").name
+                    # entry_path first: several entries of one archive share its path, and
+                    # naming them all after it collapses them into one name
+                    name = Path(file.entry_path or file.path).with_suffix(".json").name
                 except (ValueError, IndexError) as error:
                     self._skip_or_raise(
                         f"A file entity on input port {index + 1} is malformed: {error}"
