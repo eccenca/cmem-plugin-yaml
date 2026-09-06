@@ -10,6 +10,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 ### Changed
 
 - updated dependencies and template
+- reworked the task documentation and the parameter descriptions of **Parse YAML**
+    - the source and target modes are now explained in the dropdown labels only,
+      instead of being listed a second time in the task documentation
+    - the documentation describes which ports exist in which mode, and names the
+      behaviour users stumble over: only the first value of the first entity of
+      the first input is parsed, a document has to be a mapping or a sequence,
+      only one document per stream is read, and writing to a JSON dataset
+      replaces its entire content
 
 ## [1.1.1] 2026-08-19
 

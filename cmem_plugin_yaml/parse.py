@@ -38,11 +38,11 @@ SOURCE.code = "code"
 SOURCE.file = "file"
 SOURCE.options = OrderedDict(
     {
-        SOURCE.entities: f"{SOURCE.entities}: "
-        "Content is parsed from of the input port in a workflow.",
-        SOURCE.code: f"{SOURCE.code}: Content is parsed from the YAML code field below.",
-        SOURCE.file: f"{SOURCE.file}: "
-        "Content is parsed from an uploaded project file resource (see advanced options).",
+        SOURCE.entities: f"{SOURCE.entities} - the YAML arrives on the input port, "
+        "from the task before this one",
+        SOURCE.code: f"{SOURCE.code} - the YAML is typed or pasted into the code field "
+        "of this task",
+        SOURCE.file: f"{SOURCE.file} - the YAML is read from a file uploaded to the project",
     }
 )
 
@@ -52,12 +52,11 @@ TARGET.json_entities = "json_entities"
 TARGET.json_dataset = "json_dataset"
 TARGET.options = OrderedDict(
     {
-        TARGET.json_entities: f"{TARGET.json_entities}: "
-        "Parsed structure will be sent as JSON entities to the output port.",
-        TARGET.json_dataset: f"{TARGET.json_dataset}: "
-        "Parsed structure will be is saved in a JSON dataset (see advanced options).",
-        TARGET.entities: f"{TARGET.entities}: "
-        "Parsed structure will be send as entities to the output port.",
+        TARGET.json_entities: f"{TARGET.json_entities} - one entity carrying the JSON "
+        "document as text",
+        TARGET.json_dataset: f"{TARGET.json_dataset} - the JSON document is written into "
+        "a JSON dataset, and nothing leaves the task",
+        TARGET.entities: f"{TARGET.entities} - the structure of the document, as entities",
     }
 )
 
@@ -67,52 +66,60 @@ DEFAULT_YAML = YamlCode(f"# Add your YAML code here (and select '{SOURCE.code}' 
 @Plugin(
     label="Parse YAML",
     plugin_id="cmem_plugin_yaml-parse",
-    description="Parses files, source code or input values as YAML documents.",
+    description="Parses a YAML document from a file, a code field or the input port "
+    "and converts it to JSON.",
     icon=Icon(file_name="logo.svg", package=__package__),
     documentation="""
-This workflow task parses YAML content from multiple sources and converts it to various output
-formats.
+This task reads one YAML document, converts it to JSON and hands the result on in one of
+three shapes: as entities mirroring the structure of the document, as a single entity
+carrying the JSON as text, or written into a JSON dataset.
 
-**Input Sources:**
+Both ends of the task change with the configured modes. An input port exists only while
+the YAML comes from the preceding task; read from the code field or from an uploaded
+project file, this task starts the workflow. Writing into a JSON dataset leaves no output
+port at all, so the task is then a terminal step and hands nothing on.
 
-- **entities**: Parse YAML from input port entities in a workflow
-- **code**: Parse YAML from directly entered source code
-- **file**: Parse YAML from uploaded project file resources
+It usually sits at the front of a chain: a YAML file uploaded to the project becomes
+entities that a transformation consumes, or becomes a JSON dataset that later tasks read
+like any other dataset.
 
-**Output Formats:**
+Worth knowing before configuring it:
 
-- **entities**: Convert parsed structure to entities for workflow processing
-- **json_entities**: Output as single JSON entity to the output port
-- **json_dataset**: Save parsed structure directly to a JSON dataset
-
-The plugin provides flexible YAML-to-JSON conversion with configurable input schema
-types and paths for entity-based processing. It includes comprehensive validation and
-error handling for all supported modes.
+- Only the first value of the first entity of the first input is parsed. Further values,
+  entities and inputs are ignored without a warning.
+- The document has to describe a mapping or a sequence. A file holding nothing but a
+  string or a number is rejected, since neither becomes a JSON object.
+- Exactly one document is read. A stream of several documents separated by `---` fails.
+- Parsing is safe, so YAML tags that construct arbitrary Python objects are refused.
+- Writing into a JSON dataset replaces the entire file behind it, rather than merging
+  with what is already there.
 """,
     parameters=[
         PluginParameter(
             name="source_mode",
             label="Source / Input Mode",
-            description="",
+            description="Where the YAML document comes from.",
             param_type=ChoiceParameterType(SOURCE.options),
             default_value=SOURCE.code,
         ),
         PluginParameter(
             name="target_mode",
             label="Target / Output Mode",
-            description="",
+            description="In which shape the parsed document leaves this task.",
             param_type=ChoiceParameterType(TARGET.options),
             default_value=TARGET.entities,
         ),
         PluginParameter(
             name="source_code",
             label="YAML Source Code (when using the *code* input)",
+            description=f"The YAML document itself, used in the '{SOURCE.code}' source mode.",
         ),
         PluginParameter(
             name="source_file",
             label="YAML File (when using the *file* input)",
-            description="Which YAML file do you want to load into a JSON dataset? "
-            "The dropdown shows file resources from the current project.",
+            description=f"The project file holding the YAML document, used in the "
+            f"'{SOURCE.file}' source mode. The dropdown lists the file resources of the "
+            "current project.",
             param_type=ResourceParameterType(),
             advanced=True,
             default_value="",
@@ -120,8 +127,9 @@ error handling for all supported modes.
         PluginParameter(
             name="target_dataset",
             label="Target Dataset",
-            description="Where do you want to save the result of the conversion? "
-            "The dropdown shows JSON datasets from the current project.",
+            description=f"The JSON dataset the result is written into, used in the "
+            f"'{TARGET.json_dataset}' target mode. The dropdown lists the JSON datasets of "
+            "the current project.",
             param_type=DatasetParameterType(dataset_type="json"),
             advanced=True,
             default_value="",
@@ -129,15 +137,17 @@ error handling for all supported modes.
         PluginParameter(
             name="input_schema_type",
             label="Input Schema Type / Class",
-            description=f"In case of source mode '{SOURCE.entities}', you can specify the "
-            "requested input type.",
+            description=f"The type the input port asks for, used in the "
+            f"'{SOURCE.entities}' source mode. Change it when the preceding task delivers "
+            "entities of a different type.",
             advanced=True,
         ),
         PluginParameter(
             name="input_schema_path",
             label="Input Schema Path / Property",
-            description=f"In case of source mode '{SOURCE.entities}', you can specify the "
-            "requested input path.",
+            description=f"The path the YAML document is read from, used in the "
+            f"'{SOURCE.entities}' source mode. Change it when the preceding task carries "
+            "the document in a differently named path.",
             advanced=True,
         ),
     ],

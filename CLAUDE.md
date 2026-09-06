@@ -34,8 +34,9 @@ stay in step whenever a mode is added, removed or renamed:
   when the task is configured, so a mode without a port case breaks the
   workflow editor rather than the execution.
 - **The `OrderedDict` values are user visible.** They are the option labels
-  rendered in the dropdown, and the plugin `documentation` block repeats them
-  as prose. Change one and change the other.
+  rendered in the dropdown, and they are the only place a mode is explained -
+  the plugin `documentation` block deliberately does not repeat them. A new
+  mode therefore needs a label that explains it, not a note somewhere else.
 
 `_validate_config()` runs twice: once in `__init__`, where only the parameter
 values are known, and again at the top of `execute()`, where `self.client` and
