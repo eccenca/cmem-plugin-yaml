@@ -13,8 +13,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
   target mode **file** writes one JSON file per document to the output port
 - the task can declare more than one input port, so documents can be read from several
   tasks at once - the advanced **Number of Input Ports** parameter, read in port order
-- every entity of every connected port is parsed now, one document each, instead of only
-  the first one
+- every entity of every declared input port is parsed now, one document each, instead of
+  only the first one
 - the advanced **Tolerate Unusable Input** parameter skips a document which cannot be
   parsed and turns an input which delivers nothing into an empty result; a batch in which
   every document fails stays an error

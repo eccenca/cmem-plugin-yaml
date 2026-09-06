@@ -43,7 +43,10 @@ The number of input ports is itself a parameter. `number_of_inputs` multiplies
 whichever port the source mode declares, and `_get_input_entities()` and
 `_get_input_file()` walk `range(self.number_of_inputs)` rather than the length
 of `inputs`, so a port which was declared but left unconnected is treated as an
-empty one instead of raising an `IndexError`.
+empty one instead of raising an `IndexError`. The opposite case - more inputs
+connected than ports declared - reads only the declared ones, and
+`_warn_about_undeclared_inputs()` says so, because dropping a whole port in
+silence looks like a successful run.
 
 ## Everything is a batch
 
@@ -161,7 +164,8 @@ and its task count (16), so refreshing the file means updating the assertion.
 `alice.yml` and `bob.yml` carry deliberately overlapping and diverging keys, for
 the union assertion. `will-be-str.yml` and `will-be-int.yml` parse to a bare
 string and a bare integer, `plain-list.yml` is a list of plain values, and
-`broken.yml` is not valid YAML at all.
+`broken.yml` is not valid YAML at all. `args-string.yml` and `args-list.yml`
+disagree about the shape of one key, which is what the coercion asserts on.
 
 ## Dependencies
 

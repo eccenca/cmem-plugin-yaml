@@ -92,8 +92,9 @@ either as entities or as files.
 
 The YAML comes from one of three places: the code field of this task, entities carrying it
 as text, or files arriving on an input port. Both port modes read every entity of every
-connected port, so a batch of files becomes a batch of results, and the task can declare
-more than one input port when the documents come from several tasks at once. Configured to
+port the task declares, so a batch of files becomes a batch of results, and the number of
+those ports is configurable, for documents which come from several tasks at once -
+connecting more tasks than the task has ports leaves the surplus unread. Configured to
 read from its code field, it declares no input port and starts the workflow. On the output
 side the task either hands on the structure of the documents as entities, or one JSON file
 per document.
