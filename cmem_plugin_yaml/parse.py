@@ -110,7 +110,8 @@ Worth knowing before configuring it:
 - Parsing is safe, so YAML tags that construct arbitrary Python objects are refused.
 - Documents leaving as entities are combined into one stream whose paths are the union of
   all of them, and a value a document does not carry becomes empty.
-- A returned file is named after the file it came from, with a `.json` suffix.
+- A returned file is named after the file it came from, with a `.json` suffix, made
+  unique when two of them would otherwise share a name.
 """,
     parameters=[
         PluginParameter(
@@ -407,17 +408,37 @@ class ParseYaml(WorkflowPlugin):
         self._report(len(documents), "read", "documents parsed")
         return entities
 
+    def _unique_name(self, name: str, taken: set[str]) -> str:
+        """Make a file name unique among the ones already returned by this run.
+
+        Two input ports can deliver files of the same name, and a task which stores what
+        this one returns names the resource after the file's basename - so a repeated name
+        would overwrite an earlier result rather than collide visibly.
+        """
+        if name not in taken:
+            taken.add(name)
+            return name
+        stem, suffix = Path(name).stem, Path(name).suffix
+        number = 2
+        while f"{stem}-{number}{suffix}" in taken:
+            number += 1
+        unique = f"{stem}-{number}{suffix}"
+        self.log.warning(f"'{name}' was returned before, so this document is named '{unique}'.")
+        taken.add(unique)
+        return unique
+
     def _provide_output_file(self, documents: list[Document]) -> Entities:
         """Output one JSON file per document"""
         schema = FileEntitySchema()
         files: list[File] = []
+        taken: set[str] = set()
         for index, document in enumerate(documents, start=1):
             fallback = (
                 f"{FALLBACK_NAME}-{index}.json" if len(documents) > 1 else f"{FALLBACK_NAME}.json"
             )
             # each file gets its own directory, so that two documents of the same name
-            # cannot overwrite one another
-            path = Path(mkdtemp()) / (document.name or fallback)
+            # cannot overwrite one another on disk either
+            path = Path(mkdtemp()) / self._unique_name(document.name or fallback, taken)
             self.write_json(document.data, path)
             files.append(LocalFile(path=str(path), mime="application/json"))
             self._report(len(files), "write", "JSON files written")

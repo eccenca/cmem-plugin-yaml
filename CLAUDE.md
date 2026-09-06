@@ -83,6 +83,13 @@ via `with_suffix`. Documents which came from the code field or from an entity
 value have no name of their own and fall back to `FALLBACK_NAME`, numbered when
 there is more than one. `Document.name` carries `None` for exactly that case.
 
+Names are then made unique across the whole run by `_unique_name()`, which
+appends `-2`, `-3` and so on before the suffix. This is not about the file
+system - every file gets its own `mkdtemp()` - but about what happens after the
+task: a task which stores what this one returns names the resource after the
+file's basename, so two ports delivering `alice.yml` would otherwise produce two
+resources called `alice.json`, the second overwriting the first.
+
 ## Errors, and what tolerating them means
 
 `_raise_error()` reaches the user twice, as an `ExecutionReport` error and as a

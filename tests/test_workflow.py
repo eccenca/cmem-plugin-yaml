@@ -156,6 +156,23 @@ def test_several_input_ports_are_read_in_order() -> None:
 
 
 @needs_cmem
+def test_repeated_file_names_are_made_unique() -> None:
+    """Test that the same file name on several ports does not overwrite an earlier result"""
+    result = ParseYaml(
+        source_mode=SOURCE.file,
+        target_mode=TARGET.file,
+        number_of_inputs=3,
+    ).execute(
+        [file_entities("alice.yml"), file_entities("alice.yml"), file_entities("alice.yml")],
+        TestExecutionContext(),
+    )
+    written = written_files(result)
+    assert list(written) == ["alice.json", "alice-2.json", "alice-3.json"]
+    # every one of them still holds the document it was made from
+    assert all(_ == {"name": "alice", "age": 30} for _ in written.values())
+
+
+@needs_cmem
 def test_an_empty_port_beside_a_full_one_is_fine() -> None:
     """Test that one empty port does not stop a batch which has documents"""
     result = ParseYaml(

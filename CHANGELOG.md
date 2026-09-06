@@ -41,7 +41,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
   starts with
 - documents leaving as entities are combined into one stream whose paths are the union of
   all of them, and a value a document does not carry becomes empty
-- a returned file is named after the file it came from, with a `.json` suffix
+- a returned file is named after the file it came from, with a `.json` suffix, and is
+  made unique when two documents would otherwise share a name - two input ports
+  delivering the same file name used to produce two results a downstream task could
+  not tell apart
 - `cmem-client` is no longer a dependency of this package: files are read through the File
   Entity Schema of `cmem-plugin-base`, which talks to the deployment itself
 - **Parse YAML** logs a warning for an input port which delivered nothing, and for
