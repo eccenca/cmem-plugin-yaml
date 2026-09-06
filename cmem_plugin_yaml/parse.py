@@ -110,8 +110,7 @@ Worth knowing before configuring it:
 - Parsing is safe, so YAML tags that construct arbitrary Python objects are refused.
 - Documents leaving as entities are combined into one stream whose paths are the union of
   all of them, and a value a document does not carry becomes empty.
-- A written file is named after the file it came from, with a `.json` suffix, and lives in
-  a temporary directory until another task stores it somewhere durable.
+- A returned file is named after the file it came from, with a `.json` suffix.
 """,
     parameters=[
         PluginParameter(
