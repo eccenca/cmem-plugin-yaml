@@ -20,6 +20,12 @@ allowed values live in the `SOURCE` and `TARGET` namespaces at the top of
 `parse.py`. Those two values drive three separate things, and all three have to
 stay in step whenever a mode is added, removed or renamed:
 
+`REMOVED_TARGETS` names the target modes which existed until 2.0.0, so that a
+task saved before the upgrade is told what happened to its mode instead of only
+that it is unknown. Add to it whenever a mode is removed; the source mode `file`
+is not in it because the name survived while its meaning changed, which no
+message can detect.
+
 - **Dispatch is by name, not by branch.** `_get_input()` and `_provide_output()`
   look up `_get_input_<source_mode>` and `_provide_output_<target_mode>` with
   `getattr`. A new mode is a new method following that naming, plus an entry in
@@ -94,7 +100,9 @@ why the naming rule below matters.
 ## Naming a written file
 
 An output file is named after the file it came from, `a.yml` becoming `a.json`
-via `with_suffix`. Documents which came from the code field or from an entity
+via `with_suffix` - and after `entry_path` rather than `path` when the file is an
+entry in an archive, since every entry of one archive shares its path and would
+otherwise collapse onto a single name. Documents which came from the code field or from an entity
 value have no name of their own and fall back to `FALLBACK_NAME`, numbered when
 there is more than one. `Document.name` carries `None` for exactly that case.
 

@@ -1,6 +1,7 @@
 """test the parts of the parse plugin which need no deployment"""
 
 import json
+import re
 from pathlib import Path
 from tempfile import mkdtemp
 
@@ -93,6 +94,18 @@ def test_bad_configuration_is_refused_without_a_deployment() -> None:
     with pytest.raises(ValueError, match="Unknown source mode"):
         ParseYaml(source_mode="not-there")
     with pytest.raises(ValueError, match="Unknown target mode"):
+        ParseYaml(target_mode="not-there")
+
+
+def test_a_removed_target_mode_says_it_was_removed() -> None:
+    """Test that a task saved before 2.0.0 is told what happened to its target mode"""
+    removal = re.escape("removed in 2.0.0: use the 'file' target mode")
+    with pytest.raises(ValueError, match=removal):
+        ParseYaml(target_mode="json_dataset")
+    with pytest.raises(ValueError, match=re.escape("removed in 2.0.0")):
+        ParseYaml(target_mode="json_entities")
+    # a mode which never existed is still just unknown, with nothing appended
+    with pytest.raises(ValueError, match=re.escape("Unknown target mode: 'not-there'.") + "$"):
         ParseYaml(target_mode="not-there")
 
 

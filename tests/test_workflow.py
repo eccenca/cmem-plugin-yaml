@@ -2,6 +2,7 @@
 
 import gzip
 import json
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -379,3 +380,29 @@ def test_documents_disagreeing_about_a_key_keep_their_values() -> None:
         [["web"], ["--verbose"]],
         [["api"], ['["--verbose", "--debug"]']],
     ]
+
+
+@needs_cmem
+def test_archive_entries_are_named_after_the_entry(tmp_path: Path) -> None:
+    """Test that entries of one archive do not all collapse onto the archive's name"""
+    archive = tmp_path / "config.zip"
+    with zipfile.ZipFile(archive, "w") as writer:
+        writer.writestr("alice.yml", "name: alice")
+        writer.writestr("nested/bob.yml", "name: bob")
+    schema = FileEntitySchema()
+    entities = Entities(
+        iter(
+            [
+                schema.to_entity(LocalFile(str(archive), entry_path="alice.yml")),
+                schema.to_entity(LocalFile(str(archive), entry_path="nested/bob.yml")),
+            ]
+        ),
+        schema=schema,
+    )
+    result = ParseYaml(source_mode=SOURCE.file, target_mode=TARGET.file).execute(
+        [entities], TestExecutionContext()
+    )
+    assert written_files(result) == {
+        "alice.json": {"name": "alice"},
+        "bob.json": {"name": "bob"},
+    }
