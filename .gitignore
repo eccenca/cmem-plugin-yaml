@@ -145,8 +145,9 @@ cython_debug/
 # generated .idea/.gitignore already assumes: vcs.xml, modules.xml, the project
 # .iml, inspectionProfiles/ and runConfigurations/ describe the project, not the
 # machine. These entries follow github/gitignore's Global/JetBrains.gitignore,
-# plus misc.xml, which names the local Python interpreter, and sonarlint/, whose
-# binary index files neither list covers.
+# plus misc.xml, which names the local Python interpreter, sonarlint/, whose
+# binary index files neither list covers, and ruff.xml, which records the path
+# to the ruff binary of whoever opened the project.
 .idea/**/workspace.xml
 .idea/**/tasks.xml
 .idea/**/usage.statistics.xml
@@ -157,6 +158,7 @@ cython_debug/
 .idea/**/sqlDataSources.xml
 .idea/misc.xml
 .idea/sonarlint/
+.idea/ruff.xml
 
 # project build plan specific ignores
 # 'co' is CMEM orchestration output, which is sometimes part of a build plan.
