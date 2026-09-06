@@ -7,6 +7,26 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## [Unreleased]
 
+### Added
+
+- source mode **file** reads files from an input port with the File Entity Schema, and
+  target mode **file** writes one JSON file per document to the output port
+- the task can declare more than one input port, so documents can be read from several
+  tasks at once - the advanced **Number of Input Ports** parameter, read in port order
+- every entity of every declared input port is parsed now, one document each, instead of
+  only the first one
+- the advanced **Tolerate Unusable Input** parameter skips a document which cannot be
+  parsed and turns an input which delivers nothing into an empty result; a batch in which
+  every document fails stays an error
+
+### Removed
+
+- the **file** source mode no longer reads a project file picked in the task - the
+  **YAML File** parameter is gone, and a file arrives on the input port instead
+- target mode **json_dataset** and its **Target Dataset** parameter - write the file
+  output to a project resource with a task which stores files
+- target mode **json_entities** - use the file output for the JSON document
+
 ### Changed
 
 - updated dependencies and template
@@ -14,23 +34,60 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
     - the source and target modes are now explained in the dropdown labels only,
       instead of being listed a second time in the task documentation
     - the documentation describes which ports exist in which mode, and names the
-      behaviour users stumble over: only the first value of the first entity of
-      the first input is parsed, a document has to be a mapping or a sequence,
-      only one document per stream is read, and writing to a JSON dataset
-      replaces its entire content
+      behaviour users stumble over: a document has to be a mapping or a sequence,
+      only one document per file is read, and documents leaving as entities share
+      one unioned schema
 - the target mode dropdown lists **entities** first, which is the mode the task
   starts with
-- **Parse YAML** logs a warning for each connected input, entity and value it
-  ignores, instead of dropping everything after the first one in silence
+- documents leaving as entities are combined into one stream whose paths are the union of
+  all of them, and a value a document does not carry becomes empty
+- a returned file is named after the file it came from, with a `.json` suffix, and is
+  made unique when two documents would otherwise share a name - two input ports
+  delivering the same file name used to produce two results a downstream task could
+  not tell apart
+- `cmem-client` is no longer a dependency of this package: files are read through the File
+  Entity Schema of `cmem-plugin-base`, which talks to the deployment itself
+- **Parse YAML** logs a warning for an input port which delivered nothing, and for
+  each document it skipped, instead of dropping input in silence
+- the execution report counts what it describes in the singular when there is one of
+  it, and says a JSON file is *returned* rather than *written*, since the task hands
+  it on rather than storing it
 
 ### Fixed
 
+- two documents which disagree about a key - a string in one, a list in the next - now
+  carry it as text in both. The entity builder used to let the last document decide, which
+  re-read the string one character per value, or failed outright when a list met a mapping
+- a key which is not a string is given its string form, so it survives into JSON and into
+  an entity path; two keys which become the same string are refused rather than one of
+  them being lost
+- a document holding a value JSON has no type for - a plain `1990-01-02` is a date, not
+  a string - no longer aborts the whole batch with an unreported error; it is written as
+  its string form, which is what the entities output already did with it
+- a batch mixing a mapping and a list of plain values reports what is wrong instead of
+  failing deep inside the entity builder
+- a compressed file is decompressed on the way in, instead of being reported as invalid
+  YAML
+- a file which cannot be read reports and skips for the reasons which actually occur - a
+  corrupt archive and an error from the deployment are not `OSError` - and a malformed
+  file entity no longer bypasses **Tolerate Unusable Input**
+- a skipped document names the file it came from and why, rather than the name of a JSON
+  file which was never written; the warnings of the execution report carry the reason too
+- cancelling a run no longer reports that the input port delivered nothing, and no
+  further files are written once it is cancelled
+- an empty result is reported, so a tolerated empty batch is not indistinguishable from a
+  task which never ran
+- the fallback file name of a single document is `parsed-yaml.json` again; it only gains a
+  number when another document would take the same name
+- all documents of a run share one temporary directory instead of one each
 - the source mode of a task built in Python is **code**, the same mode the task
   starts with in the workflow editor - the constructor still defaulted to
   **entities**
 - an entity carrying no value at all now reports that no value is available,
   and points at the Input Schema Path / Property, instead of failing with a bare
   `StopIteration`
+- a YAML document holding a list of plain values no longer produces an empty result while
+  declaring an output port - it reports that there is nothing to build entities from
 
 ## [1.1.1] 2026-08-19
 

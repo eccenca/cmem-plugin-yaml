@@ -21,7 +21,6 @@ poetry-dynamic-versioning = "^1.10.0"
 [tool.poetry.dependencies]# if you need to change python version here, change it also in .python-version
 python = "^3.13"
 pyyaml = "^6.0.3"
-cmem-client = "^1.0.0"
 
 [tool.poetry.dependencies.cmem-plugin-base]
 version = "^4.20.0"
