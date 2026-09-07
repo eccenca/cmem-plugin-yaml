@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/)
 
+## [Unreleased]
+
+### Fixed
+
+- yaml2json no longer converts non-ASCII characters to unicode escape sequences
+
 ## [1.1.1] 2026-08-19
 
 ### Fixed
