@@ -1,10 +1,10 @@
 # Changes here will be overwritten by Copier
-_commit: v8.5.0-3-g60fcc85
+_commit: v9.6.1
 _src_path: gh:eccenca/cmem-plugin-template
 author_mail: cmempy-developer@eccenca.com
 author_name: eccenca GmbH
 github_page: https://github.com/eccenca/cmem-plugin-yaml
-project_description: Load and parse YAML documents.
+project_description: Parse YAML documents into JSON files or entities.
 project_slug: yaml
 project_type: plugin
 pypi: true

@@ -7,9 +7,6 @@ import os
 
 import pytest
 
-PROJECT_NAME = "yaml_test_project"
-
-
 # check for cmem environment and skip if not present
 needs_cmem = pytest.mark.skipif(
     os.environ.get("CMEM_BASE_URI", "") == "", reason="Needs CMEM configuration"

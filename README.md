@@ -1,6 +1,6 @@
 # cmem-plugin-yaml
 
-Load and parse YAML documents.
+Parse YAML documents into JSON files or entities.
 
 [![eccenca Corporate Memory][cmem-shield]][cmem-link] [![workflow](https://github.com/eccenca/cmem-plugin-yaml/actions/workflows/check.yml/badge.svg)](https://github.com/eccenca/cmem-plugin-yaml/actions) [![pypi version](https://img.shields.io/pypi/v/cmem-plugin-yaml)](https://pypi.org/project/cmem-plugin-yaml) [![license](https://img.shields.io/pypi/l/cmem-plugin-yaml)](https://pypi.org/project/cmem-plugin-yaml)
 [![poetry][poetry-shield]][poetry-link] [![ruff][ruff-shield]][ruff-link] [![mypy][mypy-shield]][mypy-link] [![copier][copier-shield]][copier] 
@@ -9,10 +9,12 @@ Load and parse YAML documents.
 
 - Run [task](https://taskfile.dev/) to see all major development tasks.
 - Use [pre-commit](https://pre-commit.com/) to avoid errors before commit.
+- Agent instructions and skills for this project are in `.claude/` - your own
+  instructions belong in `CLAUDE.md`, which is never overwritten.
 - This repository was created with [this copier template](https://github.com/eccenca/cmem-plugin-template).
 
 [cmem-link]: https://documentation.eccenca.com
-[cmem-shield]: https://img.shields.io/endpoint?url=https://dev.documentation.eccenca.com/badge.json
+[cmem-shield]: https://img.shields.io/endpoint?url=https://documentation.eccenca.com/latest/badge.json
 [poetry-link]: https://python-poetry.org/
 [poetry-shield]: https://img.shields.io/endpoint?url=https://python-poetry.org/badge/v0.json
 [ruff-link]: https://docs.astral.sh/ruff/
