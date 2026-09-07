@@ -368,7 +368,7 @@ class ParseYaml(WorkflowPlugin):
         if not isinstance(yaml_content, dict | list):
             raise TypeError("YAML content could not be parsed to a dict or list.")
         with Path.open(json_file, "w", encoding="utf-8") as json_writer:
-            json.dump(yaml_content, json_writer)
+            json.dump(yaml_content, json_writer, ensure_ascii=False)
         if logger:
             logger.info(f"JSON written to {json_file}")
         return json_file
