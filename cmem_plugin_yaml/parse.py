@@ -103,10 +103,9 @@ The YAML comes from one of three places: the code field of this task, entities c
 as text, or files arriving on an input port. Both port modes read every entity of every
 port the task declares, so a batch of files becomes a batch of results, and the number of
 those ports is configurable, for documents which come from several tasks at once.
-Configured to read from its code field, it declares no input port and starts the
-workflow. On the output
-side the task either hands on the structure of the documents as entities, or one JSON file
-per document.
+Configured to read from its code field, it declares no input port and starts the workflow.
+On the output side the task either hands on the structure of the documents as entities, or
+one JSON file per document.
 
 It usually sits between a task that produces files and one that consumes them: read a
 directory of YAML, parse it here, and let a task that stores project resources keep the
@@ -127,7 +126,8 @@ Worth knowing before configuring it:
   YAML, so `on:` reads back as `True` unless it is quoted in the source document.
 - A returned file is named after the file it came from - after the entry, when that file
   is an entry in an archive - with a `.json` suffix, made unique when two of them would
-  otherwise share a name.
+  otherwise share a name. A document that did not come from a file - from the code field,
+  or from an entity - has no name of its own and is written as `parsed-yaml.json` instead.
 """,
     parameters=[
         PluginParameter(
