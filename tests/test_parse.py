@@ -64,6 +64,15 @@ def test_write_json() -> None:
         assert json.load(reader) == {"name": "alice"}
 
 
+def test_write_json_preserves_non_ascii_characters() -> None:
+    r"""Test that non-ASCII characters are kept as-is instead of being \u-escaped"""
+    path = Path(mkdtemp()) / "non-ascii.json"
+    ParseYaml.write_json({"name": "Straße Müller"}, path)
+    raw_json = path.read_text(encoding="utf-8")
+    assert "\\u" not in raw_json
+    assert "Straße Müller" in raw_json
+
+
 def test_ports_follow_the_configuration() -> None:
     """Test that the declared ports follow source mode, target mode and the port count"""
     number_of_inputs = 3

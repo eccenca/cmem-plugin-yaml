@@ -7,10 +7,16 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## [Unreleased]
 
+### Fixed
+
+- `write_json` no longer converts non-ASCII characters to unicode escape sequences
+
 ### Changed
 
 - the package description says what the task returns, not only what it reads:
   *Parse YAML documents into JSON files or entities*
+- the task documentation now says what a document from the code field or from an entity is
+  named when the target mode writes it to a file
 
 
 ## [2.0.0] 2026-09-06
