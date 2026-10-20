@@ -11,12 +11,12 @@ cmemc admin workspace python install cmem-plugin-yaml
 ```
 
 [![workflow](https://github.com/eccenca/cmem-plugin-yaml/actions/workflows/check.yml/badge.svg)](https://github.com/eccenca/cmem-plugin-yaml/actions) [![pypi version](https://img.shields.io/pypi/v/cmem-plugin-yaml)](https://pypi.org/project/cmem-plugin-yaml) [![license](https://img.shields.io/pypi/l/cmem-plugin-yaml)](https://pypi.org/project/cmem-plugin-yaml)
-[![poetry][poetry-shield]][poetry-link] [![ruff][ruff-shield]][ruff-link] [![mypy][mypy-shield]][mypy-link] [![copier][copier-shield]][copier] 
+[![uv][uv-shield]][uv-link] [![ruff][ruff-shield]][ruff-link] [![mypy][mypy-shield]][mypy-link] [![copier][copier-shield]][copier] 
 
 [cmem-link]: https://documentation.eccenca.com
 [cmem-shield]: https://img.shields.io/endpoint?url=https://documentation.eccenca.com/latest/badge.json
-[poetry-link]: https://python-poetry.org/
-[poetry-shield]: https://img.shields.io/endpoint?url=https://python-poetry.org/badge/v0.json
+[uv-link]: https://docs.astral.sh/uv/
+[uv-shield]: https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json
 [ruff-link]: https://docs.astral.sh/ruff/
 [ruff-shield]: https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json&label=Code%20Style
 [mypy-link]: https://mypy-lang.org/
