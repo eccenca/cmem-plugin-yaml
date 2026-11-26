@@ -8,12 +8,12 @@ tasks:
     desc: Install plugin package in Corporate Memory
     cmds:
       - task build
-      - poetry run cmemc admin workspace python install dist/cmem_plugin_yaml*.tar.gz
-      - poetry run cmemc admin workspace python list-plugins
+      - uv run cmemc admin workspace python install dist/cmem_plugin_yaml*.tar.gz
+      - uv run cmemc admin workspace python list-plugins
 
   uninstall:
     desc: Uninstall plugin package in Corporate Memory
     cmds:
       - task build
-      - poetry run cmemc admin workspace python uninstall cmem-plugin-yaml
-      - poetry run cmemc admin workspace python list-plugins
+      - uv run cmemc admin workspace python uninstall cmem-plugin-yaml
+      - uv run cmemc admin workspace python list-plugins
